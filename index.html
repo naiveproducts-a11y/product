@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Naive Innova — Finished Goods Stock</title>
+<style>
+/* === Naive Innova CI: Green Primary (#2E7D32) + Blue Secondary (#1A237E) === */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#EDF6EE;color:#333;min-height:100vh}
+
+/* Header — gradient เขียว→น้ำเงิน เหมือนโลโก้ */
+.header{background:linear-gradient(135deg,#1B4D2C,#2E7D32,#1A237E);color:#fff;padding:16px 20px 0}
+.header-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.logo{flex-shrink:0;font-size:30px}
+.header h1{font-size:19px;font-weight:700}
+.header p{font-size:11px;opacity:.8;margin-top:2px}
+.tabs{display:flex;gap:0}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:600;border-bottom:3px solid transparent;color:rgba(255,255,255,.7);background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;transition:.15s}
+.tab.active{color:#fff;border-bottom-color:#A5D6A7}
+.content{padding:16px;max-width:1200px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+
+/* Summary cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.card{background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-left:4px solid #e0e0e0}
+.card-val{font-size:26px;font-weight:800;line-height:1}
+.card-label{font-size:10px;color:#888;margin-top:3px;font-weight:600}
+.card.ok{border-left-color:#2E7D32}.card.ok .card-val{color:#2E7D32}
+.card.warn{border-left-color:#E65100}.card.warn .card-val{color:#E65100}
+.card.danger{border-left-color:#C62828}.card.danger .card-val{color:#C62828}
+.card.info{border-left-color:#2E7D32}.card.info .card-val{color:#2E7D32}
+
+/* Info bar — เขียวอ่อน */
+.info-bar{background:linear-gradient(135deg,#E8F5E9,#C8E6C9);border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:#1B5E20;border-left:4px solid #2E7D32;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* Filter badges */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+.fbadge{padding:5px 12px;border-radius:20px;border:2px solid #e0e0e0;background:#fff;font-size:11px;cursor:pointer;font-family:inherit;font-weight:400;color:#555;transition:.15s;white-space:nowrap}
+.fbadge:hover{border-color:#388E3C;color:#2E7D32}
+.fbadge.on{border-color:#2E7D32;background:#E8F5E9;color:#1B5E20;font-weight:700}
+.fbadge.brand-on{border-color:#1565C0;background:#E3F2FD;color:#1565C0;font-weight:700}
+
+/* Search */
+.search-row{display:flex;gap:8px;margin-bottom:12px}
+.search-inp{flex:1;padding:9px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:.2s;background:#fff}
+.search-inp:focus{border-color:#388E3C;box-shadow:0 0 0 3px rgba(46,125,50,.12)}
+
+/* Product table */
+.tbl{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.tbl th{background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;padding:10px 12px;font-size:11px;text-align:left;white-space:nowrap}
+.tbl td{padding:9px 12px;font-size:12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.prod-row td{border-bottom:none!important}
+.tbl tr.prod-row:hover td{background:#F1F8F1}
+.pid{font-family:monospace;font-size:10px;color:#999;display:block;margin-bottom:1px}
+.pname{font-weight:600;color:#1B5E20;font-size:12px}
+.pcust{font-size:10px;color:#1565C0;margin-top:1px;font-style:italic}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;margin-right:3px;white-space:nowrap}
+.b-oem{background:#E3F2FD;color:#1565C0}
+.b-ob{background:#E8F5E9;color:#2E7D32}
+.b-cat{background:#FFF8E1;color:#E65100}
+
+/* Stock display */
+.stk-ok{color:#2E7D32;font-weight:800;font-size:18px}
+.stk-low{color:#E65100;font-weight:800;font-size:18px}
+.stk-neg{color:#C62828;font-weight:800;font-size:18px}
+.stk-unit{font-size:10px;color:#999;margin-left:2px}
+
+/* Status pills */
+.st-ok{background:#E8F5E9;color:#2E7D32;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap}
+.st-low{background:#FFF3E0;color:#E65100;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap}
+.st-neg{background:#FFEBEE;color:#C62828;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap}
+.st-nomin{background:#F5F5F5;color:#888;padding:3px 9px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap}
+
+/* Expiry */
+.exp-ok{font-size:11px;color:#555}
+.exp-warn{font-size:10px;color:#E65100;background:#FFF3E0;padding:2px 6px;border-radius:6px;display:inline-block}
+.exp-danger{font-size:10px;color:#C62828;background:#FFEBEE;padding:2px 6px;border-radius:6px;display:inline-block}
+
+/* Lot breakdown row — เขียวอ่อน */
+.lot-row{background:#F1F8F1!important}
+.lot-row td{padding:6px 12px!important;border-bottom:1px dashed #C8E6C9!important}
+.lot-tag{font-family:monospace;font-size:10px;background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:4px}
+
+/* Action buttons */
+.btn-in{background:linear-gradient(135deg,#1B5E20,#388E3C);color:#fff;border:none;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600}
+.btn-out{background:linear-gradient(135deg,#E65100,#F57C00);color:#fff;border:none;padding:6px 11px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:600;margin-left:4px}
+.btn-edit{background:#F5F5F5;color:#555;border:1px solid #ddd;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;margin-left:4px}
+.btn-in:hover,.btn-out:hover,.btn-edit:hover{filter:brightness(1.08)}
+.btn-sm{padding:4px 8px;font-size:10px;border-radius:5px;border:none;cursor:pointer;font-family:inherit;font-weight:600;color:#fff}
+.btn-lot-exp{background:#E65100}
+.btn-detail{background:none;border:1px solid #e0e0e0;color:#666;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-family:inherit}
+
+/* History tags */
+.tag-in{background:#E8F5E9;color:#2E7D32;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:700}
+.tag-sale{background:#FFEBEE;color:#C62828;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:700}
+.tag-sample{background:#FFF3E0;color:#E65100;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:700}
+.tag-adj{background:#E8EAF6;color:#3949AB;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:700}
+.tag-adj-in{background:#E8F5E9;color:#1B5E20;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:700}
+.qty-in{color:#2E7D32;font-weight:700}
+.qty-out{color:#C62828;font-weight:700}
+
+/* Modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;justify-content:center;align-items:center;padding:16px}
+.ov.show{display:flex}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:540px;box-shadow:0 10px 40px rgba(0,0,0,.25);overflow:hidden;max-height:95vh;display:flex;flex-direction:column}
+.mh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;color:#fff;flex-shrink:0}
+.mh h3{font-size:15px;font-weight:700}
+.mx{background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0}
+.mx:hover{background:rgba(255,255,255,.35)}
+.mb{padding:16px 20px;overflow-y:auto;flex:1}
+.fg{margin-bottom:13px}
+.fl{font-size:11px;font-weight:700;color:#555;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.fi{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;transition:.2s}
+.fi:focus{border-color:#388E3C;box-shadow:0 0 0 3px rgba(46,125,50,.12)}
+.fi-auto{background:#F1F8F1;color:#555}
+.fr{display:flex;gap:10px}.fr .fg{flex:1}
+.btn-sub{width:100%;padding:13px;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px}
+.btn-sub:hover{filter:brightness(1.08)}
+
+/* Stock available box */
+.stk-avail{background:#F1F8F1;border:1.5px solid #A5D6A7;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px}
+.stk-avail-neg{background:#FFF5F5;border-color:#EF9A9A}
+.lot-picker{margin-top:8px}
+.lot-pick-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;margin-bottom:4px;cursor:pointer;background:#fff;border:1px solid #e0e0e0;transition:.15s}
+.lot-pick-item:hover{border-color:#388E3C;background:#E8F5E9}
+.lot-pick-item.selected{border-color:#2E7D32;background:#E8F5E9}
+.lot-pick-item input[type=radio]{accent-color:#2E7D32}
+
+/* Warning / Danger boxes */
+.warn-box{background:#FFF3E0;border:1.5px solid #FFCC02;border-radius:8px;padding:9px 13px;margin-bottom:10px;font-size:12px;color:#E65100;display:flex;align-items:flex-start;gap:7px}
+.danger-box{background:#FFEBEE;border:1.5px solid #EF9A9A;border-radius:8px;padding:9px 13px;margin-bottom:10px;font-size:12px;color:#C62828}
+
+/* Searchable dropdown */
+.sel-wrap{position:relative}
+.sel-btn{width:100%;padding:9px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;transition:.2s}
+.sel-btn.open,.sel-btn:hover{border-color:#388E3C}
+.sel-drop{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid #388E3C;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.15);z-index:600;display:none;overflow:hidden}
+.sel-drop.show{display:block}
+.sel-search{width:100%;padding:8px 12px;border:none;border-bottom:1px solid #eee;font-size:13px;font-family:inherit;outline:none}
+.sel-list{max-height:200px;overflow-y:auto}
+.sel-item{padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f5f5f5;transition:.1s;line-height:1.4}
+.sel-item:hover,.sel-item.on{background:#E8F5E9;color:#1B5E20}
+
+/* Save toast */
+.si{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1B5E20;color:#fff;padding:9px 20px;border-radius:24px;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9000}
+.si.show{opacity:1}
+
+/* Min stock edit badge */
+.min-edit{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:#FFF8E1;border:1px dashed #FFD54F;border-radius:6px;cursor:pointer;font-size:11px;color:#E65100}
+.min-edit:hover{background:#FFF3CD}
+.min-zero{color:#9E9E9E;font-style:italic}
+
+/* Misc */
+.section-label{font-size:11px;font-weight:700;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.divider{height:1px;background:#f0f0f0;margin:10px 0}
+select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23999' d='M5 6L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px}
+
+@media(max-width:600px){
+  .tbl td:nth-child(2),.tbl th:nth-child(2){display:none}
+  .cards{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">🌿</div>
+    <div>
+      <h1>Naive Innova — สต๊อกสินค้าสำเร็จรูป</h1>
+      <p>Finished Goods Stock Management | บันทึกอัตโนมัติ ข้อมูลไม่หายเมื่อปิด</p>
+    </div>
+  </div>
+  <div class="tabs" id="tabBar"></div>
+</div>
+
+<div class="content">
+  <div class="panel active" id="p-stock"></div>
+  <div class="panel" id="p-hist"></div>
+  <div class="panel" id="p-ref"></div>
+  <div class="panel" id="p-addprod"></div>
+  <div class="panel" id="p-count"></div>
+  <div class="panel" id="p-analysis"></div>
+</div>
+
+<!-- Modal: รับเข้า -->
+<div class="ov" id="ov-in">
+  <div class="modal">
+    <div class="mh" style="background:linear-gradient(135deg,#1B5E20,#2E7D32)">
+      <h3>📥 รับสินค้าเข้าสต๊อก</h3>
+      <button class="mx" id="cl-in">✕</button>
+    </div>
+    <div class="mb" id="fb-in"></div>
+  </div>
+</div>
+
+<!-- Modal: เบิกออก -->
+<div class="ov" id="ov-out">
+  <div class="modal">
+    <div class="mh" style="background:linear-gradient(135deg,#BF360C,#E64A19)">
+      <h3>📤 เบิกสินค้าออก</h3>
+      <button class="mx" id="cl-out">✕</button>
+    </div>
+    <div class="mb" id="fb-out"></div>
+  </div>
+</div>
+
+<!-- Modal: แก้ไข Min Stock (admin) -->
+<div class="ov" id="ov-minedit">
+  <div class="modal" style="max-width:400px">
+    <div class="mh" style="background:linear-gradient(135deg,#4A148C,#7B1FA2)">
+      <h3>⚙️ ตั้งค่า Min Stock</h3>
+      <button class="mx" id="cl-minedit">✕</button>
+    </div>
+    <div class="mb" id="fb-minedit"></div>
+  </div>
+</div>
+
+<!-- Modal: Password -->
+<div class="ov" id="ov-pw">
+  <div class="modal" style="max-width:360px">
+    <div class="mh" style="background:linear-gradient(135deg,#37474F,#546E7A)">
+      <h3>🔒 ยืนยันตัวตน Admin</h3>
+      <button class="mx" id="cl-pw">✕</button>
+    </div>
+    <div class="mb">
+      <div class="fg"><div class="fl">รหัสผ่าน Admin</div><input class="fi" type="password" id="pw-inp" placeholder="กรอกรหัสผ่าน..."></div>
+      <button class="btn-sub" id="pw-ok" style="background:linear-gradient(135deg,#37474F,#546E7A)">✅ ยืนยัน</button>
+      <div id="pw-err" style="color:#C62828;font-size:12px;margin-top:8px;text-align:center"></div>
+    </div>
+  </div>
+</div>
+
+<div class="si" id="si">💾 บันทึกแล้ว</div>
+
+<script>
+// ========================================================
+// DATA DEFAULTS
+// ========================================================
+const PRODUCTS_DEFAULT=[
+  {id:'SH-BIO-120ML-DM-OEM',name:'แชมพูไบโอ สุนัข/แมว 120ml',cat:'แชมพู',ser:'ไบโอ',size:'120',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'SH-OIL-30ML-DM-OEM',name:'แชมพูออยล์ สุนัข/แมว 30ml',cat:'แชมพู',ser:'ออยล์',size:'30',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'FMD-LEAR-60ML-DM-OEM',name:'โฟมอาบแห้ง สุนัข/แมว 60ml',cat:'โฟมอาบแห้ง',ser:'ทำความสะอาด',size:'60',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'TM-TRM-60ML-DM-OEM',name:'ทรีทเมนท์ทรีตเมนต์ สุนัข/แมว 60ml',cat:'ทรีทเมนท์',ser:'ทรีตเมนต์',size:'60',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'SP-FUNG-30ML-DM-OEM',name:'สเปรย์กำจัดเชื้อรา/ยีสต์ สุนัข/แมว 30ml',cat:'สเปรย์',ser:'กำจัดเชื้อราและยีสต์',size:'30',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'SP-COAT-30ML-DM-OEM',name:'สเปรย์บำรุงขน สุนัข/แมว 30ml',cat:'สเปรย์',ser:'บำรุงขน',size:'30',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'ST-EYE-30ML-DM-OEM',name:'น้ำยาเช็ดคราบน้ำตา สุนัข/แมว 30ml',cat:'น้ำยาเช็ดคราบน้ำตา',ser:'เช็ดรอบดวงตา',size:'30',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'POW-POW-10G-DM-OEM',name:'แป้ง สุนัข/แมว 10g',cat:'แป้ง',ser:'แป้ง',size:'10',unit:'G',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'WD-HEAL-20ML-DM-OEM',name:'เจลสมานแผล สุนัข/แมว 20ml',cat:'เจลสมานแผล',ser:'สมานแผล',size:'20',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'SPO-ODOR-30ML-DM-OEM',name:'สเปรย์ดับกลิ่น สุนัข/แมว 30ml',cat:'สเปรย์ดับกลิ่น',ser:'ดับกลิ่น',size:'30',unit:'ML',animal:'สุนัข/แมว',brand:'OEM',minStk:50,cust:''},
+  {id:'SH-BIO-250ML-DM-OB',name:'แชมพูไบโอ สุนัข/แมว 250ml',cat:'แชมพู',ser:'ไบโอ',size:'250',unit:'ML',animal:'สุนัข/แมว',brand:'Own Brand',minStk:20,cust:'Naive Innova'},
+  {id:'TM-BIO-250ML-DM-OB',name:'ทรีทเมนท์ควบแน่น สุนัข/แมว 250ml',cat:'ทรีทเมนท์',ser:'ควบแน่น',size:'250',unit:'ML',animal:'สุนัข/แมว',brand:'Own Brand',minStk:20,cust:'Naive Innova'},
+  {id:'EYE-BIO-100ML-DM-OB',name:'น้ำยาเช็ดคราบน้ำตา สุนัข/แมว 100ml',cat:'น้ำยาเช็ดคราบน้ำตา',ser:'เช็ดรอบดวงตา',size:'100',unit:'ML',animal:'สุนัข/แมว',brand:'Own Brand',minStk:20,cust:'Naive Innova'},
+  {id:'XX-BIO-300ML-DM-OB',name:'สเปรย์ดับกลิ่น สุนัข/แมว 300ml',cat:'สเปรย์ดับกลิ่น',ser:'ดับกลิ่น',size:'300',unit:'ML',animal:'สุนัข/แมว',brand:'Own Brand',minStk:20,cust:'Naive Innova'},
+];
+
+const TXS_DEFAULT=[{"id":1,"lot":"SHB-130126-1","d":"13/01/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"PO-0001","qi":76,"qo":0,"note":"นำ Stock "},{"id":2,"lot":"SHO-130126-1","d":"13/01/2026","pid":"SH-OIL-30ML-DM-OEM","pname":"แชมพูออยล์สำหรับสุนัข/แมว 30 ml","cat":"แชมพู","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0001","qi":14,"qo":0,"note":""},{"id":3,"lot":"FMDL-130126-1","d":"13/01/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0002","qi":34,"qo":0,"note":""},{"id":4,"lot":"TMT-130126-1","d":"13/01/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0003","qi":60,"qo":0,"note":""},{"id":5,"lot":"SPF-130126-1","d":"13/01/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0004","qi":2,"qo":0,"note":""},{"id":6,"lot":"SPC-130126-1","d":"13/01/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0005","qi":26,"qo":0,"note":""},{"id":7,"lot":"STE-130126-1","d":"13/01/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0006","qi":66,"qo":0,"note":""},{"id":8,"lot":"POWP-130126-1","d":"13/01/2026","pid":"POW-POW-10G-DM-OEM","pname":"แป้งแป้งสำหรับสุนัข/แมว 10 g","cat":"แป้ง","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0007","qi":52,"qo":0,"note":""},{"id":9,"lot":"WDH-130126-1","d":"13/01/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"in","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0008","qi":49,"qo":0,"note":""},{"id":10,"lot":"SHB-140126-1","d":"14/01/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0009","qi":0,"qo":2,"note":""},{"id":11,"lot":"STE-140126-1","d":"14/01/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0010","qi":0,"qo":2,"note":""},{"id":12,"lot":"POWP-140126-1","d":"14/01/2026","pid":"POW-POW-10G-DM-OEM","pname":"แป้งแป้งสำหรับสุนัข/แมว 10 g","cat":"แป้ง","t":"sample","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0011","qi":0,"qo":2,"note":""},{"id":13,"lot":"SHO-140126-1","d":"14/01/2026","pid":"SH-OIL-30ML-DM-OEM","pname":"แชมพูออยล์สำหรับสุนัข/แมว 30 ml","cat":"แชมพู","t":"sample","mfg":"2025-01-05","exp":"2026-01-04","ref":"INV-0012","qi":0,"qo":1,"note":""},{"id":14,"lot":"TMT-140126-1","d":"14/01/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0013","qi":0,"qo":1,"note":""},{"id":15,"lot":"SPF-140126-1","d":"14/01/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0014","qi":0,"qo":1,"note":"สเปรย์บำรุงขน"},{"id":16,"lot":"WDH-150126-1","d":"15/01/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0015","qi":0,"qo":1,"note":""},{"id":17,"lot":"STE-150126-1","d":"15/01/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0016","qi":0,"qo":1,"note":""},{"id":18,"lot":"SPC-150126-1","d":"15/01/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0017","qi":0,"qo":1,"note":"สเปรย์บำรุงขนหมด"},{"id":19,"lot":"SHB-200126-1","d":"20/01/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0018","qi":0,"qo":1,"note":""},{"id":20,"lot":"TMT-200126-1","d":"20/01/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0019","qi":0,"qo":1,"note":""},{"id":21,"lot":"SPF-200126-1","d":"20/01/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0020","qi":0,"qo":1,"note":""},{"id":22,"lot":"WDH-200126-1","d":"20/01/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0021","qi":0,"qo":2,"note":""},{"id":23,"lot":"STE-200126-1","d":"20/01/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0022","qi":0,"qo":1,"note":""},{"id":24,"lot":"SHB-220126-1","d":"22/01/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0023","qi":0,"qo":23,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":25,"lot":"TMT-220126-1","d":"22/01/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0024","qi":0,"qo":28,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":26,"lot":"SPF-220126-1","d":"22/01/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0025","qi":0,"qo":0,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":27,"lot":"SPC-220126-1","d":"22/01/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0026","qi":0,"qo":23,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":28,"lot":"WDH-220126-1","d":"22/01/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0027","qi":0,"qo":23,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":29,"lot":"POWP-220126-1","d":"22/01/2026","pid":"POW-POW-10G-DM-OEM","pname":"แป้งแป้งสำหรับสุนัข/แมว 10 g","cat":"แป้ง","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0028","qi":0,"qo":25,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":30,"lot":"POWP-220126-2","d":"22/01/2026","pid":"POW-POW-10G-DM-OEM","pname":"แป้งแป้งสำหรับสุนัข/แมว 10 g","cat":"แป้ง","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0029","qi":0,"qo":0,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":31,"lot":"SHO-220126-1","d":"22/01/2026","pid":"SH-OIL-30ML-DM-OEM","pname":"แชมพูออยล์สำหรับสุนัข/แมว 30 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0030","qi":0,"qo":13,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":32,"lot":"FMDL-220126-1","d":"22/01/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0031","qi":0,"qo":22,"note":"เบิกของวันที่ 22-28/69 รวมของต.ย 20 ชุด\nไปออกงาน 16-17 ก.พ  มฟล"},{"id":33,"lot":"SHB-300126-1","d":"30/01/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0032","qi":0,"qo":3,"note":""},{"id":34,"lot":"FMDL-300126-1","d":"30/01/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0033","qi":0,"qo":1,"note":""},{"id":35,"lot":"TMT-300126-1","d":"30/01/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0034","qi":0,"qo":1,"note":""},{"id":36,"lot":"SPOO-020226-1","d":"02/02/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"in","mfg":"2026-01-21","exp":"2028-01-20","ref":"INV-0035","qi":25,"qo":0,"note":""},{"id":37,"lot":"SPF-020226-1","d":"02/02/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"in","mfg":"2026-01-15","exp":"2028-02-14","ref":"INV-0036","qi":89,"qo":0,"note":""},{"id":38,"lot":"SPC-020226-1","d":"02/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0038","qi":11,"qo":0,"note":""},{"id":39,"lot":"SHB-020226-1","d":"02/02/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0039","qi":0,"qo":1,"note":""},{"id":40,"lot":"TMT-020226-1","d":"02/02/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0040","qi":0,"qo":1,"note":""},{"id":41,"lot":"SPC-020226-2","d":"02/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-05","exp":"2028-01-04","ref":"INV-0041","qi":0,"qo":1,"note":""},{"id":42,"lot":"SPC-020226-3","d":"02/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0042","qi":0,"qo":1,"note":""},{"id":43,"lot":"SPOO-030226-1","d":"03/02/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0043","qi":0,"qo":1,"note":""},{"id":44,"lot":"SPOO-040226-1","d":"04/02/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0044","qi":0,"qo":4,"note":""},{"id":45,"lot":"SHB-040226-1","d":"04/02/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0045","qi":0,"qo":2,"note":""},{"id":46,"lot":"SPF-040226-1","d":"04/02/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0046","qi":0,"qo":2,"note":""},{"id":47,"lot":"STE-040226-1","d":"04/02/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0047","qi":0,"qo":1,"note":""},{"id":48,"lot":"POWP-040226-1","d":"04/02/2026","pid":"POW-POW-10G-DM-OEM","pname":"แป้งแป้งสำหรับสุนัข/แมว 10 g","cat":"แป้ง","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0048","qi":0,"qo":1,"note":""},{"id":49,"lot":"TMT-040226-1","d":"04/02/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0049","qi":0,"qo":1,"note":""},{"id":50,"lot":"SPF-060226-1","d":"06/02/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"in","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0050","qi":86,"qo":0,"note":""},{"id":51,"lot":"TMT-090226-1","d":"09/02/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"in","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0051","qi":18,"qo":0,"note":""},{"id":52,"lot":"STE-090226-1","d":"09/02/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0052","qi":0,"qo":1,"note":""},{"id":53,"lot":"SPF-090226-1","d":"09/02/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0053","qi":0,"qo":2,"note":""},{"id":54,"lot":"SHB-090226-1","d":"09/02/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0054","qi":0,"qo":1,"note":""},{"id":55,"lot":"SPC-090226-1","d":"09/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0055","qi":0,"qo":2,"note":""},{"id":56,"lot":"FMDL-090226-1","d":"09/02/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0056","qi":0,"qo":1,"note":""},{"id":57,"lot":"FMDL-090226-2","d":"09/02/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0057","qi":0,"qo":5,"note":"ปรับตามสินค้าจริงให้ตรงกับตาราง"},{"id":58,"lot":"SPF-090226-2","d":"09/02/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"adj_out","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0058","qi":0,"qo":93,"note":"ปรับตามสินค้าจริงให้ตรงกับตาราง"},{"id":59,"lot":"SPC-090226-2","d":"09/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"adj_in","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0059","qi":19,"qo":0,"note":"ปรับตามสินค้าจริงให้ตรงกับตาราง"},{"id":60,"lot":"STE-090226-2","d":"09/02/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"adj_out","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0060","qi":0,"qo":33,"note":"ปรับตามสินค้าจริงให้ตรงกับตาราง"},{"id":61,"lot":"WDH-090226-1","d":"09/02/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0061","qi":0,"qo":1,"note":"ปรับตามสินค้าจริงให้ตรงกับตาราง"},{"id":62,"lot":"SPOO-090226-1","d":"09/02/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0062","qi":8,"qo":0,"note":"ปรับตามสินค้าจริงให้ตรงกับตาราง"},{"id":63,"lot":"SHB-100226-1","d":"10/02/2026","pid":"SH-BIO-120ML-DM-OEM","pname":"แชมพูไบโอสำหรับสุนัข/แมว 120 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0063","qi":0,"qo":2,"note":""},{"id":64,"lot":"FMDL-100226-1","d":"10/02/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0064","qi":0,"qo":2,"note":""},{"id":65,"lot":"TMT-100226-1","d":"10/02/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0065","qi":0,"qo":2,"note":""},{"id":66,"lot":"SPC-100226-1","d":"10/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0066","qi":0,"qo":2,"note":""},{"id":67,"lot":"SPOO-100226-1","d":"10/02/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0067","qi":0,"qo":2,"note":""},{"id":68,"lot":"STE-100226-1","d":"10/02/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0068","qi":0,"qo":2,"note":""},{"id":69,"lot":"SPF-100226-1","d":"10/02/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0069","qi":0,"qo":2,"note":""},{"id":70,"lot":"WDH-100226-1","d":"10/02/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0070","qi":0,"qo":1,"note":""},{"id":71,"lot":"POWP-100226-1","d":"10/02/2026","pid":"POW-POW-10G-DM-OEM","pname":"แป้งแป้งสำหรับสุนัข/แมว 10 g","cat":"แป้ง","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0071","qi":0,"qo":1,"note":""},{"id":72,"lot":"SPC-120226-1","d":"12/02/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0072","qi":0,"qo":1,"note":""},{"id":73,"lot":"SPOO-120226-1","d":"12/02/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0073","qi":0,"qo":1,"note":""},{"id":74,"lot":"FMDL-120226-1","d":"12/02/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0074","qi":0,"qo":1,"note":""},{"id":75,"lot":"SHO-130226-1","d":"13/02/2026","pid":"SH-OIL-30ML-DM-OEM","pname":"แชมพูออยล์สำหรับสุนัข/แมว 30 ml","cat":"แชมพู","t":"in","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0075","qi":100,"qo":0,"note":""},{"id":76,"lot":"SHO-130226-2","d":"13/02/2026","pid":"SH-OIL-30ML-DM-OEM","pname":"แชมพูออยล์สำหรับสุนัข/แมว 30 ml","cat":"แชมพู","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0076","qi":0,"qo":14,"note":""},{"id":77,"lot":"STE-130226-1","d":"13/02/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0077","qi":0,"qo":1,"note":""},{"id":78,"lot":"SHB-120226-1","d":"12/02/2026","pid":"SH-BIO-250ML-DM-OB","pname":"แชมพูไบโอสำหรับสุนัข/แมว 250 ml","cat":"แชมพู","t":"in","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0078","qi":20,"qo":0,"note":""},{"id":79,"lot":"TMB-120226-1","d":"12/02/2026","pid":"TM-BIO-250ML-DM-OB","pname":"ทรีทเมนท์ควบแน่นสำหรับสุนัข/แมว 250 ml","cat":"ทรีทเมนท์","t":"in","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0079","qi":20,"qo":0,"note":""},{"id":80,"lot":"EYEB-120226-1","d":"12/02/2026","pid":"EYE-BIO-100ML-DM-OB","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 100 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"in","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0080","qi":20,"qo":0,"note":""},{"id":81,"lot":"XXB-120226-1","d":"12/02/2026","pid":"XX-BIO-300ML-DM-OB","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 300 ml","cat":"สเปรย์กำจัดกลิ่น","t":"in","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0081","qi":20,"qo":0,"note":""},{"id":82,"lot":"SHB-160226-1","d":"16/02/2026","pid":"SH-BIO-250ML-DM-OB","pname":"แชมพูไบโอสำหรับสุนัข/แมว 250 ml","cat":"แชมพู","t":"sale","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0082","qi":0,"qo":2,"note":"ขายออกงาน  Inno Jump Market มฟล 16-17 /02/2569"},{"id":83,"lot":"EYEB-160226-1","d":"16/02/2026","pid":"EYE-BIO-100ML-DM-OB","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 100 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sale","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0083","qi":0,"qo":7,"note":"ขายออกงาน  Inno Jump Market มฟล 16-17 /02/2569"},{"id":84,"lot":"XXB-160226-1","d":"16/02/2026","pid":"XX-BIO-300ML-DM-OB","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 300 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sale","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0084","qi":0,"qo":6,"note":"ขายออกงาน  Inno Jump Market มฟล 16-17 /02/2569"},{"id":85,"lot":"SHB-170226-1","d":"17/02/2026","pid":"SH-BIO-250ML-DM-OB","pname":"แชมพูไบโอสำหรับสุนัข/แมว 250 ml","cat":"แชมพู","t":"sale","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0085","qi":0,"qo":2,"note":"ขายออกงาน  Inno Jump Market มฟล 16-17 /02/2569"},{"id":86,"lot":"EYEB-170226-1","d":"17/02/2026","pid":"EYE-BIO-100ML-DM-OB","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 100 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sale","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0086","qi":0,"qo":1,"note":"ขายออกงาน  Inno Jump Market มฟล 16-17 /02/2569"},{"id":87,"lot":"SHB-190226-1","d":"19/02/2026","pid":"SH-BIO-250ML-DM-OB","pname":"แชมพูไบโอสำหรับสุนัข/แมว 250 ml","cat":"แชมพู","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0087","qi":0,"qo":1,"note":"ส่งหใ้ผู้ช่วยอธิการบดี มฟล "},{"id":88,"lot":"TMB-190226-1","d":"19/02/2026","pid":"TM-BIO-250ML-DM-OB","pname":"ทรีทเมนท์ควบแน่นสำหรับสุนัข/แมว 250 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0088","qi":0,"qo":1,"note":"ส่งหใ้ผู้ช่วยอธิการบดี มฟล "},{"id":89,"lot":"EYEB-190226-1","d":"19/02/2026","pid":"EYE-BIO-100ML-DM-OB","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 100 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0089","qi":0,"qo":1,"note":"ส่งหใ้ผู้ช่วยอธิการบดี มฟล "},{"id":90,"lot":"XXB-190226-1","d":"19/02/2026","pid":"XX-BIO-300ML-DM-OB","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 300 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0090","qi":0,"qo":2,"note":"ส่งหใ้ผู้ช่วยอธิการบดี มฟล และ หมอปิงบ้านดู่"},{"id":91,"lot":"EYEB-190226-2","d":"19/02/2026","pid":"EYE-BIO-100ML-DM-OB","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 100 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"adj_in","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0091","qi":6,"qo":0,"note":"ตัวเดิมที่ค้างในสต็อกเดิม"},{"id":92,"lot":"EYEB-270226-1","d":"27/02/2026","pid":"EYE-BIO-100ML-DM-OB","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 100 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0092","qi":0,"qo":2,"note":""},{"id":93,"lot":"STE-040326-1","d":"04/03/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-01-06","exp":"2028-01-05","ref":"INV-0093","qi":0,"qo":4,"note":""},{"id":94,"lot":"SPF-040326-1","d":"04/03/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0094","qi":0,"qo":2,"note":""},{"id":95,"lot":"XXB-040326-1","d":"04/03/2026","pid":"XX-BIO-300ML-DM-OB","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 300 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0095","qi":0,"qo":2,"note":""},{"id":96,"lot":"SPC-040326-1","d":"04/03/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0096","qi":0,"qo":2,"note":""},{"id":97,"lot":"FMDL-040326-1","d":"04/03/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0097","qi":0,"qo":2,"note":""},{"id":98,"lot":"TMT-040326-1","d":"04/03/2026","pid":"TM-TRM-60ML-DM-OEM","pname":"ทรีทเมนท์ทรีตเมนต์สำหรับสุนัข/แมว 60 ml","cat":"ทรีทเมนท์","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0098","qi":0,"qo":7,"note":""},{"id":99,"lot":"SPF-050326-1","d":"05/03/2026","pid":"SP-FUNG-30ML-DM-OEM","pname":"สเปรย์กำจัดเชื้อราและยีสต์สำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"adj_in","mfg":"2026-02-12","exp":"2028-02-11","ref":"INV-0099","qi":5,"qo":0,"note":""},{"id":100,"lot":"SPC-050326-1","d":"05/03/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"","qi":0,"qo":3,"note":""},{"id":101,"lot":"STE-050326-1","d":"05/03/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"","qi":0,"qo":6,"note":""},{"id":102,"lot":"WDH-050326-1","d":"05/03/2026","pid":"WD-HEAL-20ML-DM-OEM","pname":"เจลสมานแผลสมานแผลสำหรับสุนัข/แมว 20 ml","cat":"เจลสมานแผล","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"","qi":0,"qo":2,"note":""},{"id":103,"lot":"SPOO-050326-1","d":"05/03/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"","qi":0,"qo":5,"note":""},{"id":104,"lot":"STE-100326-1","d":"10/03/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-02-12","exp":"2028-02-11","ref":"","qi":0,"qo":1,"note":""},{"id":105,"lot":"FMDL-190326-1","d":"19/03/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"in","mfg":"2026-03-19","exp":"2028-03-18","ref":"","qi":23,"qo":0,"note":""},{"id":106,"lot":"STE-200326-1","d":"20/03/2026","pid":"ST-EYE-30ML-DM-OEM","pname":"น้ำยาเช็ดคราบน้ำตาเช็ดรอบดวงตาสำหรับสุนัข/แมว 30 ml","cat":"น้ำยาเช็ดคราบน้ำตา","t":"sample","mfg":"2026-03-19","exp":"2028-03-18","ref":"","qi":0,"qo":1,"note":""},{"id":107,"lot":"FMDL-200326-1","d":"20/03/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-03-19","exp":"2028-03-18","ref":"","qi":0,"qo":1,"note":""},{"id":108,"lot":"FMDL-250326-1","d":"25/03/2026","pid":"FMD-LEAR-60ML-DM-OEM","pname":"โฟมอาบแห้งทำความสะอาดสำหรับสุนัข/แมว 60 ml","cat":"โฟมอาบแห้ง","t":"sample","mfg":"2026-03-19","exp":"2028-03-18","ref":"","qi":0,"qo":1,"note":""},{"id":109,"lot":"SPC-250326-1","d":"25/03/2026","pid":"SP-COAT-30ML-DM-OEM","pname":"สเปรย์บำรุงขนสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์","t":"sample","mfg":"2026-03-19","exp":"2028-03-18","ref":"","qi":0,"qo":1,"note":""},{"id":110,"lot":"SPOO-250326-1","d":"25/03/2026","pid":"SPO-ODOR-30ML-DM-OEM","pname":"สเปรย์กำจัดกลิ่นดับกลิ่นสำหรับสุนัข/แมว 30 ml","cat":"สเปรย์กำจัดกลิ่น","t":"sample","mfg":"2026-03-19","exp":"2028-03-18","ref":"","qi":0,"qo":2,"note":""}];
+
+// ========================================================
+// API & STATE
+// ========================================================
+const API_URL = '/api';
+let prods = [], txs = [], countHistory = [];
+let sfCat='',sfBrand='',sfSearch='',sfHistType='',sfHistSearch='',sfHistMonth='';
+let adminUnlocked=false;
+
+async function syncAll() {
+  try {
+    const [pRes, tRes, hRes] = await Promise.all([
+      fetch(`${API_URL}/products`),
+      fetch(`${API_URL}/tx`),
+      fetch(`${API_URL}/count-history`)
+    ]);
+    prods = await pRes.json();
+    txs = await tRes.json();
+    countHistory = await hRes.json();
+    R(); // Re-render
+  } catch (err) {
+    console.error("API Sync Error:", err);
+  }
+}
+
+// Override SS (Save) to use API
+async function SS(k, v) {
+  try {
+    if (k === 'prods') {
+      // Currently, adding a product is handled in its own page logic, 
+      // but we update existing (like minStk) here.
+      // For this simplified refactor, we usually trigger individual POST/PATCH.
+    }
+    showSave();
+  } catch (err) { console.error(err); }
+}
+
+function showSave(){const s=document.getElementById('si');s.classList.add('show');clearTimeout(s._t);s._t=setTimeout(()=>s.classList.remove('show'),1600)}
+const E=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ========================================================
+// HELPERS
+// ========================================================
+function calcStock(){
+  const s={};
+  prods.forEach(p=>s[p.id]=0);
+  txs.forEach(t=>{if(s[t.pid]===undefined)s[t.pid]=0;s[t.pid]+=(t.qi||0)-(t.qo||0)});
+  return s;
+}
+
+function getLotsForProduct(pid){
+  // Build lot-level stock
+  const lots={};
+  txs.filter(t=>t.pid===pid).forEach(t=>{
+    const lot=t.lot||'unknown';
+    if(!lots[lot]){lots[lot]={lot,mfg:t.mfg||'',exp:t.exp||'',cust:t.cust||'',qi:0,qo:0}}
+    lots[lot].qi+=(t.qi||0);
+    lots[lot].qo+=(t.qo||0);
+    if(t.exp&&(!lots[lot].exp||t.exp>lots[lot].exp))lots[lot].exp=t.exp;
+    if(t.mfg&&(!lots[lot].mfg||t.mfg>lots[lot].mfg))lots[lot].mfg=t.mfg;
+    if(t.cust)lots[lot].cust=t.cust;
+  });
+  return Object.values(lots).filter(l=>l.qi-l.qo>0).sort((a,b)=>{
+    if(!a.exp)return 1;if(!b.exp)return -1;
+    return new Date(a.exp)-new Date(b.exp);
+  });
+}
+
+function getEarliestExp(pid){
+  const lots=getLotsForProduct(pid);
+  const withExp=lots.filter(l=>l.exp);
+  if(!withExp.length)return null;
+  return withExp.reduce((a,b)=>new Date(a.exp)<new Date(b.exp)?a:b).exp;
+}
+
+function daysUntil(dateStr){
+  if(!dateStr)return null;
+  const d=new Date(dateStr);
+  if(isNaN(d.getTime()))return null;
+  return Math.round((d-new Date())/(1000*60*60*24));
+}
+
+function fmtDate(s){
+  if(!s)return'—';
+  if(s.includes('/'))return s;
+  const d=new Date(s);
+  if(isNaN(d.getTime()))return s;
+  return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()+543}`;
+}
+
+function txLabel(t){
+  const m={'in':'<span class="tag-in">📥 รับเข้า</span>','adj_in':'<span class="tag-adj-in">⬆️ ปรับเพิ่ม</span>','sale':'<span class="tag-sale">🛒 ขายออก</span>','sample':'<span class="tag-sample">🎁 ส่งตัวอย่าง</span>','adj_out':'<span class="tag-adj">⬇️ ปรับลด</span>'};
+  return m[t]||`<span class="tag-adj">${E(t)}</span>`;
+}
+
+function autoLot(pid){
+  const p=prods.find(x=>x.id===pid);
+  if(!p)return'';
+  // prefix from id (first part)
+  const prefix=pid.split('-')[0].toUpperCase().slice(0,4);
+  const n=new Date();
+  const dd=String(n.getDate()).padStart(2,'0');
+  const mm=String(n.getMonth()+1).padStart(2,'0');
+  const yy=String(n.getFullYear()).slice(2);
+  // count existing lots this pid today
+  const today=`${dd}${mm}${yy}`;
+  const existing=txs.filter(t=>t.pid===pid&&t.lot&&t.lot.includes(today)).length;
+  return`${prefix}-${today}-${existing+1}`;
+}
+
+// ========================================================
+// TABS
+// ========================================================
+const TABS=[{id:'stock',label:'📦 สต๊อกสินค้า',panel:'p-stock'},{id:'hist',label:'📋 ประวัติเคลื่อนไหว',panel:'p-hist'},{id:'count',label:'🔍 ตรวจนับสต๊อก',panel:'p-count'},{id:'analysis',label:'📊 วิเคราะห์สต๊อก',panel:'p-analysis'},{id:'ref',label:'📖 ข้อมูลอ้างอิง',panel:'p-ref'},{id:'addprod',label:'➕ เพิ่มสินค้า',panel:'p-addprod'}];
+let activeTab='stock';
+function initTabs(){
+  const bar=document.getElementById('tabBar');
+  bar.innerHTML=TABS.map(t=>`<button class="tab${activeTab===t.id?' active':''}" data-id="${t.id}">${t.label}</button>`).join('');
+  bar.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{
+    activeTab=b.dataset.id;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    document.getElementById(TABS.find(t=>t.id===activeTab).panel).classList.add('active');
+    R();
+  }));
+}
+
+function R(){if(activeTab==='stock')rStock();else if(activeTab==='hist')rHist();else if(activeTab==='ref')rRef();else if(activeTab==='addprod')rAddProd();else if(activeTab==='count')rCount();else if(activeTab==='analysis')rAnalysis()}
+
+// ========================================================
+// STOCK PAGE
+// ========================================================
+function rStock(){
+  const el=document.getElementById('p-stock');
+  const s=calcStock();
+  const allCats=[...new Set(prods.map(p=>p.cat))].sort();
+  const allBrands=[...new Set(prods.map(p=>p.brand))].sort();
+
+  const fl=prods.filter(p=>{
+    if(sfCat&&p.cat!==sfCat)return false;
+    if(sfBrand&&p.brand!==sfBrand)return false;
+    if(sfSearch&&!p.name.toLowerCase().includes(sfSearch.toLowerCase())&&!p.id.toLowerCase().includes(sfSearch.toLowerCase())&&!(p.cust||'').toLowerCase().includes(sfSearch.toLowerCase()))return false;
+    return true;
+  });
+
+  const lowCount=prods.filter(p=>p.minStk>0&&s[p.id]<p.minStk).length;
+  const negCount=prods.filter(p=>s[p.id]<0).length;
+  const expSoon=prods.filter(p=>{const d=daysUntil(getEarliestExp(p.id));return d!==null&&d<=90&&d>=0}).length;
+  const expPast=prods.filter(p=>{const d=daysUntil(getEarliestExp(p.id));return d!==null&&d<0}).length;
+
+  let h=`<div class="cards">
+    <div class="card info"><div class="card-val">${prods.length}</div><div class="card-label">SKU ทั้งหมด</div></div>
+    <div class="card ${lowCount?'warn':'ok'}"><div class="card-val">${lowCount}</div><div class="card-label">ต่ำกว่า Min Stock</div></div>
+    <div class="card ${negCount?'danger':'ok'}"><div class="card-val">${negCount}</div><div class="card-label">สต๊อกติดลบ</div></div>
+    <div class="card ${expSoon?'warn':'ok'}"><div class="card-val">${expSoon}</div><div class="card-label">ใกล้หมดอายุ ≤90 วัน</div></div>
+    <div class="card ${expPast?'danger':'ok'}"><div class="card-val">${expPast}</div><div class="card-label">Lot หมดอายุแล้ว</div></div>
+  </div>`;
+
+  h+=`<div class="info-bar">💾 บันทึกอัตโนมัติ ไม่หายเมื่อปิด &nbsp;|&nbsp; ${prods.length} SKU &nbsp;|&nbsp; ${txs.length} รายการเคลื่อนไหว</div>`;
+
+  h+=`<div class="filter-row">
+    <span class="section-label">แบรนด์:</span>
+    <button class="fbadge${!sfBrand?' on':''}" data-brand="">ทั้งหมด</button>
+    ${allBrands.map(b=>`<button class="fbadge${sfBrand===b?' brand-on':''}" data-brand="${E(b)}">${E(b)}</button>`).join('')}
+  </div>
+  <div class="filter-row">
+    <span class="section-label">กลุ่ม:</span>
+    <button class="fbadge${!sfCat?' on':''}" data-cat="">ทั้งหมด</button>
+    ${allCats.map(c=>`<button class="fbadge${sfCat===c?' on':''}" data-cat="${E(c)}">${E(c)}</button>`).join('')}
+  </div>`;
+
+  h+=`<div class="search-row"><input class="search-inp" id="stk-search" placeholder="🔍 ค้นหาชื่อ / รหัส / ลูกค้า..." value="${E(sfSearch)}"></div>`;
+
+  h+=`<div style="overflow-x:auto"><table class="tbl"><thead><tr>
+    <th>สินค้า</th>
+    <th>กลุ่ม / แบรนด์</th>
+    <th>คงเหลือ</th>
+    <th>Min Stock</th>
+    <th>สถานะ</th>
+    <th>EXP ใกล้สุด</th>
+    <th>จัดการ</th>
+  </tr></thead><tbody>`;
+
+  fl.forEach(p=>{
+    const qty=s[p.id]||0;
+    const exp=getEarliestExp(p.id);
+    const days=daysUntil(exp);
+    const lots=getLotsForProduct(p.id);
+
+    let stkClass='stk-ok';
+    if(qty<0)stkClass='stk-neg';
+    else if(p.minStk>0&&qty<p.minStk)stkClass='stk-low';
+
+    let statusHtml=p.minStk>0?'<span class="st-ok">✅ ปกติ</span>':'<span class="st-nomin">— OEM</span>';
+    if(qty<0)statusHtml='<span class="st-neg">🔴 ติดลบ!</span>';
+    else if(p.minStk>0&&qty<p.minStk)statusHtml='<span class="st-low">⚠️ ต่ำกว่า Min</span>';
+
+    let expHtml='<span style="color:#ccc;font-size:11px">ไม่มี Lot</span>';
+    if(exp){
+      if(days!==null&&days<0)expHtml=`<span class="exp-danger">🔴 หมดแล้ว<br><small>${fmtDate(exp)}</small></span>`;
+      else if(days!==null&&days<=30)expHtml=`<span class="exp-danger">⚠ ${fmtDate(exp)}<br><small>อีก ${days} วัน</small></span>`;
+      else if(days!==null&&days<=90)expHtml=`<span class="exp-warn">⏰ ${fmtDate(exp)}<br><small>อีก ${days} วัน</small></span>`;
+      else expHtml=`<span class="exp-ok">${fmtDate(exp)}</span>`;
+    }
+
+    const minDisplay=p.minStk>0
+      ?`<span class="min-edit" data-minedit="${E(p.id)}" title="คลิกเพื่อแก้ไข (Admin)">✏️ ${p.minStk}</span>`
+      :`<span class="min-edit min-zero" data-minedit="${E(p.id)}" title="คลิกเพื่อตั้งค่า (Admin)">✏️ ไม่กำหนด</span>`;
+
+    h+=`<tr class="prod-row" data-pid="${E(p.id)}">
+      <td>
+        <span class="pid">${E(p.id)}</span>
+        <span class="pname">${E(p.name)}</span>
+        ${p.cust?`<span class="pcust">👤 ${E(p.cust)}</span>`:''}
+      </td>
+      <td><span class="badge b-cat">${E(p.cat)}</span><br><span class="badge ${p.brand==='OEM'?'b-oem':'b-ob'}">${E(p.brand)}</span></td>
+      <td><span class="${stkClass}">${qty}</span><span class="stk-unit">${p.unit}</span></td>
+      <td>${minDisplay}</td>
+      <td>${statusHtml}</td>
+      <td>${expHtml}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-in" data-in="${E(p.id)}">📥 รับ</button>
+        <button class="btn-out" data-out="${E(p.id)}">📤 เบิก</button>
+      </td>
+    </tr>`;
+
+    // Lot breakdown rows — always visible
+    {
+      if(!lots.length){
+        h+=`<tr class="lot-row"><td colspan="7" style="padding-left:24px!important;color:#bbb;font-style:italic;font-size:11px;padding-bottom:10px!important">ยังไม่มี Lot ในสต๊อก</td></tr>`;
+      } else {
+        h+=`<tr class="lot-row"><td colspan="7" style="padding:0 12px 10px!important">
+          <table style="width:100%;font-size:11px;border-collapse:collapse">
+            <tr style="color:#888;font-weight:700">
+              <td style="padding:3px 8px">Lot / Batch</td>
+              <td style="padding:3px 8px">คงเหลือ</td>
+              <td style="padding:3px 8px">วันผลิต</td>
+              <td style="padding:3px 8px">วันหมดอายุ</td>
+              <td style="padding:3px 8px">ลูกค้า</td>
+              <td style="padding:3px 8px">สถานะ EXP</td>
+            </tr>`;
+        lots.forEach(l=>{
+          const ld=daysUntil(l.exp);
+          let expStyle='color:#555';
+          let expNote='';
+          if(l.exp){
+            if(ld<0){expStyle='color:#C62828;font-weight:700';expNote=' 🔴หมดแล้ว'}
+            else if(ld<=30){expStyle='color:#C62828;font-weight:700';expNote=` ⚠️(${ld} วัน)`}
+            else if(ld<=90){expStyle='color:#E65100';expNote=` ⏰(${ld} วัน)`}
+          }
+          h+=`<tr style="background:${ld!==null&&ld<0?'#FFF5F5':ld!==null&&ld<=30?'#FFF8F0':'#F8FAFF'}">
+            <td style="padding:4px 8px"><span class="lot-tag">${E(l.lot)}</span></td>
+            <td style="padding:4px 8px;font-weight:700;color:#2E7D32">${l.qi-l.qo} ${p.unit}</td>
+            <td style="padding:4px 8px">${fmtDate(l.mfg)}</td>
+            <td style="padding:4px 8px;${expStyle}">${fmtDate(l.exp)}${expNote}</td>
+            <td style="padding:4px 8px;color:#7B1FA2">${E(l.cust||'—')}</td>
+            <td style="padding:4px 8px">${ld===null?'—':ld<0?'<span style="color:#C62828;font-weight:700">หมดอายุ</span>':ld<=30?'<span style="color:#C62828">⚠️ ด่วน</span>':ld<=90?'<span style="color:#E65100">ใกล้หมด</span>':'<span style="color:#2E7D32">ปกติ</span>'}</td>
+          </tr>`;
+        });
+        h+=`</table></td></tr>`;
+      }
+    }
+  });
+
+  if(!fl.length)h+=`<tr><td colspan="7" style="text-align:center;padding:30px;color:#aaa">ไม่พบสินค้า</td></tr>`;
+  h+=`</tbody></table></div>`;
+
+  // FAB
+  h+=`<div style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:100">
+    <button style="padding:12px 16px;border-radius:24px;border:none;cursor:pointer;font-size:13px;font-family:inherit;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.2);color:#fff;background:linear-gradient(135deg,#1B5E20,#2E7D32);display:flex;align-items:center;gap:6px" id="fab-in">📥 รับสินค้าเข้า</button>
+    <button style="padding:12px 16px;border-radius:24px;border:none;cursor:pointer;font-size:13px;font-family:inherit;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.2);color:#fff;background:linear-gradient(135deg,#BF360C,#E64A19);display:flex;align-items:center;gap:6px" id="fab-out">📤 เบิกสินค้าออก</button>
+  </div>`;
+
+  el.innerHTML=h;
+
+  el.querySelector('#stk-search').addEventListener('input',e=>{sfSearch=e.target.value;rStock()});
+  el.querySelectorAll('[data-cat]').forEach(b=>b.addEventListener('click',()=>{sfCat=b.dataset.cat;rStock()}));
+  el.querySelectorAll('[data-brand]').forEach(b=>b.addEventListener('click',()=>{sfBrand=b.dataset.brand;rStock()}));
+  el.querySelectorAll('[data-in]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();oM('in',b.dataset.in)}));
+  el.querySelectorAll('[data-out]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();oM('out',b.dataset.out)}));
+  el.querySelectorAll('[data-minedit]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();openMinEdit(b.dataset.minedit)}));
+  const fabIn=el.querySelector('#fab-in');if(fabIn)fabIn.addEventListener('click',()=>oM('in',''));
+  const fabOut=el.querySelector('#fab-out');if(fabOut)fabOut.addEventListener('click',()=>oM('out',''));
+}
+
+// ========================================================
+// HISTORY PAGE
+// ========================================================
+function rHist(){
+  const el=document.getElementById('p-hist');
+  const types=[['','ทั้งหมด'],['in','📥 รับเข้า'],['adj_in','⬆️ ปรับเพิ่ม'],['sale','🛒 ขายออก'],['sample','🎁 ส่งตัวอย่าง'],['adj_out','⬇️ ปรับลด']];
+
+  // Get unique months from transactions
+  const months=[...new Set(txs.map(t=>{
+    if(!t.d)return'';
+    const parts=t.d.split('/');
+    if(parts.length>=3)return`${parts[1]}/${parts[2].slice(0,4)}`;
+    return t.d.slice(0,7);
+  }).filter(Boolean))].sort((a,b)=>b.localeCompare(a)).slice(0,12);
+
+  const fl=[...txs].reverse().filter(t=>{
+    if(sfHistType&&t.t!==sfHistType)return false;
+    if(sfHistMonth){
+      const d=t.d||'';
+      const parts=d.split('/');
+      const ym=parts.length>=3?`${parts[1]}/${parts[2].slice(0,4)}`:d.slice(0,7);
+      if(ym!==sfHistMonth)return false;
+    }
+    if(sfHistSearch){
+      const q=sfHistSearch.toLowerCase();
+      if(!t.pid.toLowerCase().includes(q)&&!t.pname.toLowerCase().includes(q)&&!(t.lot||'').toLowerCase().includes(q)&&!(t.cust||'').toLowerCase().includes(q))return false;
+    }
+    return true;
+  });
+
+  let h=`<div class="filter-row">
+    ${types.map(([v,l])=>`<button class="fbadge${sfHistType===v?' on':''}" data-ht="${v}">${l}</button>`).join('')}
+  </div>`;
+  h+=`<div class="filter-row">
+    <span class="section-label">เดือน:</span>
+    <button class="fbadge${!sfHistMonth?' on':''}" data-hm="">ทั้งหมด</button>
+    ${months.map(m=>`<button class="fbadge${sfHistMonth===m?' on':''}" data-hm="${E(m)}">${E(m)}</button>`).join('')}
+  </div>`;
+  h+=`<div class="search-row"><input class="search-inp" id="hist-search" placeholder="🔍 ค้นหา Lot / รหัสสินค้า / ลูกค้า..." value="${E(sfHistSearch)}"></div>`;
+
+  h+=`<div style="font-size:11px;color:#888;margin-bottom:8px">${fl.length} รายการ</div>`;
+  h+=`<div style="overflow-x:auto"><table class="tbl"><thead><tr>
+    <th>วันที่</th><th>Lot</th><th>สินค้า</th><th>ลูกค้า</th><th>ประเภท</th><th>ผู้บันทึก</th><th>เข้า (+)</th><th>ออก (–)</th><th>EXP</th><th>เอกสาร</th><th>หมายเหตุ</th>
+  </tr></thead><tbody>`;
+
+  fl.slice(0,300).forEach(t=>{
+    h+=`<tr>
+      <td style="white-space:nowrap;font-size:11px">${E(t.d)}</td>
+      <td><span class="lot-tag">${E(t.lot||'—')}</span></td>
+      <td><span class="pid">${E(t.pid)}</span><span class="pname">${E(t.pname||'')}</span></td>
+      <td style="font-size:11px;color:#7B1FA2">${E(t.cust||'—')}</td>
+      <td>${txLabel(t.t)}</td>
+      <td style="font-size:11px;color:#1B5E20;font-weight:600;white-space:nowrap">${t.recorder?E(t.recorder):'<span style="color:#ccc">—</span>'}</td>
+      <td class="qty-in">${t.qi>0?'+'+t.qi:'—'}</td>
+      <td class="qty-out">${t.qo>0?'-'+t.qo:'—'}</td>
+      <td style="font-size:11px;white-space:nowrap">${fmtDate(t.exp)||'—'}</td>
+      <td style="font-size:11px">${E(t.ref||'—')}</td>
+      <td style="font-size:11px;color:#666">${E(t.note||'')}</td>
+    </tr>`;
+  });
+  if(!fl.length)h+=`<tr><td colspan="11" style="text-align:center;padding:30px;color:#aaa">ไม่พบรายการ</td></tr>`;
+  if(fl.length>300)h+=`<tr><td colspan="11" style="text-align:center;padding:10px;color:#aaa;font-size:11px">แสดง 300 รายการล่าสุด</td></tr>`;
+  h+=`</tbody></table></div>`;
+
+  el.innerHTML=h;
+  el.querySelector('#hist-search').addEventListener('input',e=>{sfHistSearch=e.target.value;rHist()});
+  el.querySelectorAll('[data-ht]').forEach(b=>b.addEventListener('click',()=>{sfHistType=b.dataset.ht;rHist()}));
+  el.querySelectorAll('[data-hm]').forEach(b=>b.addEventListener('click',()=>{sfHistMonth=b.dataset.hm;rHist()}));
+}
+
+// ========================================================
+// MODAL OPEN/CLOSE
+// ========================================================
+function oM(type,preselect){document.getElementById('ov-'+type).classList.add('show');buildForm(type,preselect||'')}
+function cM(type){document.getElementById('ov-'+type).classList.remove('show')}
+
+
+
+document.getElementById('cl-in').addEventListener('click',()=>cM('in'));
+document.getElementById('cl-out').addEventListener('click',()=>cM('out'));
+document.getElementById('cl-minedit').addEventListener('click',()=>cM('minedit'));
+document.getElementById('cl-pw').addEventListener('click',()=>cM('pw'));
+document.getElementById('ov-in').addEventListener('click',e=>{if(e.target.classList.contains('ov'))cM('in')});
+document.getElementById('ov-out').addEventListener('click',e=>{if(e.target.classList.contains('ov'))cM('out')});
+document.getElementById('ov-minedit').addEventListener('click',e=>{if(e.target.classList.contains('ov'))cM('minedit')});
+document.getElementById('ov-pw').addEventListener('click',e=>{if(e.target.classList.contains('ov'))cM('pw')});
+
+// ========================================================
+// BUILD FORM
+// ========================================================
+function buildForm(type,preselect){
+  const isIn=type==='in';
+  const box=document.getElementById('fb-'+type);
+  let selProd=preselect||'';
+
+  function draw(){
+    const s=calcStock();
+    const curQty=selProd?(s[selProd]||0):null;
+    const lots=selProd?getLotsForProduct(selProd):[];
+    const p=prods.find(x=>x.id===selProd);
+    // รายชื่อผู้บันทึกที่เคยใช้ (seed ด้วย Sales - Fern เสมอ)
+    const recorders=[...new Set(['Sales - Fern',...txs.map(t=>t.recorder).filter(Boolean)])].sort();
+    const recDatalist=`<datalist id="${type}-reclist">${recorders.map(n=>`<option value="${E(n)}">`).join('')}</datalist>`;
+
+    let h=`<div class="fg"><div class="fl">สินค้า * <span style="font-weight:400;color:#aaa;font-size:10px">(พิมพ์ค้นหาได้)</span></div>
+      <div class="sel-wrap" id="${type}-wrap-p">
+        <button type="button" class="sel-btn" id="${type}-sb-p">
+          <span style="color:${selProd?'#1B5E20':'#aaa'}">${selProd?(p?.name||selProd):'เลือกสินค้า...'}</span>
+          <span style="font-size:10px;color:#999">▼</span>
+        </button>
+        <div class="sel-drop" id="${type}-sd-p">
+          <input class="sel-search" placeholder="🔍 พิมพ์ค้นหา..." id="${type}-ss-p">
+          <div class="sel-list" id="${type}-sl-p"></div>
+        </div>
+      </div>
+    </div>`;
+
+    // Show available stock info
+    if(selProd && curQty!==null){
+      const isNeg=curQty<0;
+      h+=`<div class="stk-avail${isNeg?' stk-avail-neg':''}">
+        <div style="font-weight:700;margin-bottom:${lots.length?'6px':'0'}">📊 สต๊อกคงเหลือรวม: <span style="color:${isNeg?'#C62828':curQty===0?'#E65100':'#2E7D32'};font-size:16px">${curQty}</span> ${p?.unit||''}
+        ${p?.brand==='OEM'&&p?.cust?` &nbsp;|&nbsp; <span style="color:#7B1FA2;font-size:11px">👤 ${E(p.cust)}</span>`:''}
+        </div>`;
+      if(lots.length&&!isIn){
+        h+=`<div style="font-size:11px;color:#555;font-weight:700;margin-bottom:4px">Lot ที่แนะนำให้เบิกก่อน (FEFO):</div>`;
+        lots.slice(0,3).forEach((l,i)=>{
+          const ld=daysUntil(l.exp);
+          const urgency=ld!==null&&ld<0?'#FFEBEE':ld!==null&&ld<=30?'#FFF3E0':'#EEF2FF';
+          h+=`<div class="lot-pick-item" style="background:${urgency}">
+            <div>
+              <span class="lot-tag">${E(l.lot)}</span>
+              <span style="font-weight:700;color:#2E7D32;margin-left:8px">${l.qi-l.qo} ${p?.unit||''}</span>
+              ${l.exp?`<span style="font-size:10px;color:${ld!==null&&ld<0?'#C62828':ld!==null&&ld<=30?'#E65100':'#555'};margin-left:6px">EXP: ${fmtDate(l.exp)}${ld!==null?` (${ld<0?'หมดแล้ว!':'อีก '+ld+' วัน'})`:''}</span>`:''}
+              ${l.cust?`<span style="font-size:10px;color:#7B1FA2;margin-left:6px">👤${E(l.cust)}</span>`:''}
+            </div>
+          </div>`;
+        });
+      }
+      h+=`</div>`;
+    }
+
+    if(isIn){
+      h+=`<div class="fg"><div class="fl">Lot / Batch No. * <span style="font-weight:400;color:#388E3C;font-size:10px;cursor:pointer" id="lot-autogen">⚡ Auto-generate</span></div>
+        <input class="fi" id="${type}-lot" placeholder="เช่น SHB-280326-1" value="${selProd?autoLot(selProd):''}">
+      </div>`;
+      h+=`<div class="fr">
+        <div class="fg"><div class="fl">จำนวนรับเข้า *</div><input type="number" class="fi" id="${type}-qty" placeholder="0" min="1"></div>
+        <div class="fg"><div class="fl">หน่วย</div><input class="fi fi-auto" id="${type}-unit" value="${p?.unit||''}" readonly></div>
+      </div>`;
+      h+=`<div class="fr">
+        <div class="fg"><div class="fl">วันผลิต (MFG)</div><input type="date" class="fi" id="${type}-mfg"></div>
+        <div class="fg"><div class="fl">วันหมดอายุ (EXP) ⚠️</div><input type="date" class="fi" id="${type}-exp"></div>
+      </div>`;
+      h+=`<div class="fg"><div class="fl">ลูกค้า / แบรนด์ผู้สั่ง ${p?.brand==='OEM'?'<span style="color:#C62828;font-size:10px">* สำคัญสำหรับ OEM</span>':''}</div>
+        <input class="fi" id="${type}-cust" placeholder="${p?.brand==='OEM'?'ชื่อลูกค้าที่สั่งผลิต...':'เช่น Naive Innova'}" value="${p?.cust||''}">
+      </div>`;
+      h+=`<div class="fg"><div class="fl">ผู้บันทึก</div>
+        <input class="fi" id="${type}-recorder" list="${type}-reclist" placeholder="เลือกหรือพิมพ์ชื่อ..." autocomplete="off">${recDatalist}
+      </div>`;
+      h+=`<div class="fg"><div class="fl">เอกสารอ้างอิง (PO / GRN)</div><input class="fi" id="${type}-ref" placeholder="เช่น PO-0050"></div>`;
+    }else{
+      // Out form
+      const outTypes=[['sale','🛒 ขายออก'],['sample','🎁 ส่งตัวอย่าง'],['adj_out','⬇️ ปรับลด Stock']];
+      h+=`<div class="fg"><div class="fl">ประเภทการเบิก *</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${outTypes.map(([v,l])=>`<button type="button" class="fbadge" data-ot="${v}">${l}</button>`).join('')}
+        </div><input type="hidden" id="${type}-otype" value="">
+      </div>`;
+      h+=`<div class="fg"><div class="fl">จำนวนเบิกออก *</div><input type="number" class="fi" id="${type}-qty" placeholder="0" min="1"></div>`;
+      h+=`<div id="warn-neg"></div>`;
+      h+=`<div class="fg"><div class="fl">ผู้เบิก <span style="color:#C62828;font-size:10px">*</span></div>
+        <input class="fi" id="${type}-recorder" list="${type}-reclist" placeholder="เลือกหรือพิมพ์ชื่อผู้เบิก..." autocomplete="off">${recDatalist}
+      </div>`;
+      h+=`<div class="fg"><div class="fl">เอกสารอ้างอิง</div><input class="fi" id="${type}-ref" placeholder="Invoice / Order No. / Sample Request"></div>`;
+    }
+
+    h+=`<div class="fg"><div class="fl">หมายเหตุ</div><input class="fi" id="${type}-note" placeholder="บันทึกเพิ่มเติม..."></div>`;
+    h+=`<button class="btn-sub" id="${type}-sub" style="background:${isIn?'linear-gradient(135deg,#1B5E20,#2E7D32)':'linear-gradient(135deg,#BF360C,#E64A19)'}">${isIn?'✅ บันทึกรับเข้า':'✅ บันทึกเบิกออก'}</button>`;
+
+    box.innerHTML=h;
+    wireProdSelect(type,selProd,v=>{selProd=v;draw()});
+
+    // Auto lot
+    if(isIn){
+      const lotAutoBtn=box.querySelector('#lot-autogen');
+      if(lotAutoBtn)lotAutoBtn.addEventListener('click',()=>{
+        if(selProd){const inp=document.getElementById(type+'-lot');if(inp)inp.value=autoLot(selProd)}
+      });
+    }
+
+    if(!isIn){
+      // Out type selector
+      box.querySelectorAll('[data-ot]').forEach(b=>b.addEventListener('click',()=>{
+        box.querySelectorAll('[data-ot]').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        document.getElementById(type+'-otype').value=b.dataset.ot;
+      }));
+      // Qty change → warn negative
+      const qtyEl=document.getElementById(type+'-qty');
+      if(qtyEl&&curQty!==null){
+        qtyEl.addEventListener('input',()=>{
+          const q=Number(qtyEl.value)||0;
+          const after=curQty-q;
+          const warnEl=document.getElementById('warn-neg');
+          if(warnEl){
+            if(after<0)warnEl.innerHTML=`<div class="danger-box">⚠️ ยอดคงเหลือจะติดลบ: <strong>${after}</strong> ${p?.unit||''} — กรุณาตรวจสอบ</div>`;
+            else if(q>0&&after<(p?.minStk||0)&&p?.minStk>0)warnEl.innerHTML=`<div class="warn-box">⚠️ ยอดหลังเบิกจะต่ำกว่า Min Stock (${p.minStk}): เหลือ <strong>${after}</strong> ${p.unit}</div>`;
+            else warnEl.innerHTML='';
+          }
+        });
+      }
+    }
+
+    document.getElementById(type+'-sub').addEventListener('click',()=>{
+      const qty=document.getElementById(type+'-qty')?.value||'';
+      if(!selProd||!qty||Number(qty)<=0){alert('กรุณาเลือกสินค้าและกรอกจำนวน');return}
+      if(!isIn){
+        const ot=document.getElementById(type+'-otype')?.value||'';
+        if(!ot){alert('กรุณาเลือกประเภทการเบิก');return}
+        const rec=document.getElementById(type+'-recorder')?.value||'';
+        if(!rec){alert('กรุณาระบุผู้เบิก');return}
+      }
+      const now=new Date();
+      const d=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const prod=prods.find(x=>x.id===selProd);
+      const newTx={
+        id:Date.now(),lot:isIn?(document.getElementById(type+'-lot')?.value||autoLot(selProd)):('OUT-'+Date.now()),
+        d,pid:selProd,pname:prod?.name||selProd,cat:prod?.cat||'',
+        t:isIn?'in':(document.getElementById(type+'-otype')?.value||'sale'),
+        mfg:isIn?(document.getElementById(type+'-mfg')?.value||''):'',
+        exp:isIn?(document.getElementById(type+'-exp')?.value||''):'',
+        ref:document.getElementById(type+'-ref')?.value||'',
+        cust:isIn?(document.getElementById(type+'-cust')?.value||prod?.cust||''):(prod?.cust||''),
+        recorder:document.getElementById(type+'-recorder')?.value||'',
+        qi:isIn?Number(qty):0,qo:isIn?0:Number(qty),
+        note:document.getElementById(type+'-note')?.value||'',
+      };
+      
+      fetch(`${API_URL}/tx`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTx)
+      }).then(() => {
+        cM(type);
+        syncAll(); // Reload everything from server
+      });
+    });
+  }
+  draw();
+}
+
+// ========================================================
+// PRODUCT SELECT WIRE
+// ========================================================
+function wireProdSelect(type,cur,onPick){
+  const sb=document.getElementById(type+'-sb-p');
+  const sd=document.getElementById(type+'-sd-p');
+  const ss=document.getElementById(type+'-ss-p');
+  const sl=document.getElementById(type+'-sl-p');
+  if(!sb||!sd||!sl)return;
+  function fill(q){
+    const f=q?q.toLowerCase():'';
+    const r=prods.filter(p=>!f||p.name.toLowerCase().includes(f)||p.id.toLowerCase().includes(f)||(p.cust||'').toLowerCase().includes(f));
+    sl.innerHTML=r.length?r.map(p=>`<div class="sel-item${p.id===cur?' on':''}" data-id="${E(p.id)}">
+      <span style="font-size:10px;color:#888;font-family:monospace">${E(p.id)}</span>
+      <span style="font-size:10px;color:#7B1FA2;float:right">${E(p.brand==='OEM'?(p.cust||'OEM'):'Own Brand')}</span><br>
+      ${E(p.name)}
+    </div>`).join(''):'<div style="padding:16px;text-align:center;color:#999">ไม่พบ</div>';
+    sl.querySelectorAll('.sel-item').forEach(el=>el.addEventListener('click',()=>{
+      sd.classList.remove('show');sb.classList.remove('open');onPick(el.dataset.id);
+    }));
+  }
+  fill('');
+  sb.addEventListener('click',e=>{e.stopPropagation();const isOpen=sd.classList.contains('show');document.querySelectorAll('.sel-drop.show').forEach(d=>d.classList.remove('show'));document.querySelectorAll('.sel-btn.open').forEach(b=>b.classList.remove('open'));if(!isOpen){sd.classList.add('show');sb.classList.add('open');if(ss){ss.value='';ss.focus();fill('')}}});
+  if(ss){ss.addEventListener('input',e=>fill(e.target.value));ss.addEventListener('click',e=>e.stopPropagation())}
+}
+
+document.addEventListener('click',()=>{
+  document.querySelectorAll('.sel-drop.show').forEach(d=>d.classList.remove('show'));
+  document.querySelectorAll('.sel-btn.open').forEach(b=>b.classList.remove('open'));
+});
+
+// ========================================================
+// MIN STOCK EDIT (ADMIN)
+// ========================================================
+let _minEditPid=null,_pwCallback=null;
+
+function checkAdmin(cb){
+  if(adminUnlocked){cb();return}
+  _pwCallback=cb;
+  document.getElementById('ov-pw').classList.add('show');
+  document.getElementById('pw-inp').value='';
+  document.getElementById('pw-err').textContent='';
+  setTimeout(()=>document.getElementById('pw-inp').focus(),100);
+}
+
+document.getElementById('pw-ok').addEventListener('click',()=>{
+  const pw=document.getElementById('pw-inp').value;
+  if(pw==='admin'){adminUnlocked=true;cM('pw');if(_pwCallback){_pwCallback();_pwCallback=null}}
+  else{document.getElementById('pw-err').textContent='รหัสผ่านไม่ถูกต้อง'}
+});
+document.getElementById('pw-inp').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pw-ok').click()});
+
+function openMinEdit(pid){
+  checkAdmin(()=>{
+    _minEditPid=pid;
+    const p=prods.find(x=>x.id===pid);
+    if(!p)return;
+    const box=document.getElementById('fb-minedit');
+    box.innerHTML=`
+      <div style="font-size:12px;color:#555;margin-bottom:12px;background:#F3E5F5;padding:10px;border-radius:8px">
+        <strong>${E(p.name)}</strong><br>
+        <span style="font-family:monospace;font-size:10px;color:#888">${E(p.id)}</span>
+      </div>
+      <div class="fg"><div class="fl">ชื่อลูกค้า / แบรนด์ ${p.brand==='OEM'?'(OEM)':''}</div>
+        <input class="fi" id="me-cust" value="${E(p.cust||'')}">
+      </div>
+      <div class="fg"><div class="fl">Min Stock (ใส่ 0 = ไม่กำหนด)</div>
+        <input type="number" class="fi" id="me-min" value="${p.minStk||0}" min="0">
+        ${p.brand==='OEM'?'<div style="font-size:11px;color:#888;margin-top:4px">💡 OEM = ผลิตตาม order ทั่วไปแนะนำ = 0</div>':'<div style="font-size:11px;color:#888;margin-top:4px">💡 Own Brand ควรมี safety stock เช่น 20-50 ชิ้น</div>'}
+      </div>
+      <button class="btn-sub" id="me-save" style="background:linear-gradient(135deg,#4A148C,#7B1FA2)">✅ บันทึก</button>`;
+    document.getElementById('ov-minedit').classList.add('show');
+    document.getElementById('me-save').addEventListener('click',()=>{
+      const min=Number(document.getElementById('me-min').value)||0;
+      const cust=document.getElementById('me-cust').value||'';
+      const idx=prods.findIndex(x=>x.id===_minEditPid);
+      if(idx>=0){prods[idx].minStk=min;prods[idx].cust=cust}
+      SS('prods',prods);cM('minedit');R();
+    });
+  });
+}
+
+// ========================================================
+// INIT
+// ========================================================
+
+// ========================================================
+// REFERENCE / LISTS DATA
+// ========================================================
+const LISTS={
+  cats:[
+    {code:'SH',th:'แชมพู',en:'Shampoo'},
+    {code:'FMD',th:'โฟมอาบแห้ง',en:'Foam Cleanser'},
+    {code:'TM',th:'ทรีทเมนท์',en:'Treatment'},
+    {code:'ER',th:'น้ำยาเช็ดทำความสะอาดใบหู',en:'Ear Cleaner'},
+    {code:'ST',th:'น้ำยาเช็ดคราบน้ำตา',en:'Tear Stain Remover'},
+    {code:'POW',th:'แป้ง',en:'Powder'},
+    {code:'WD',th:'เจลสมานแผล',en:'Wound Gel'},
+    {code:'SPC',th:'สเปรย์บำรุงขน',en:'Coat Spray'},
+    {code:'SPF',th:'สเปรย์กำจัดเชื้อรา/ยีสต์',en:'Antifungal Spray'},
+    {code:'SPO',th:'สเปรย์ดับกลิ่น',en:'Deodorizing Spray'},
+    {code:'KIT',th:'ชุดทดลอง (Kit)',en:'Sample Kit'},
+  ],
+  series:[
+    {code:'BIO',th:'ไบโอ',en:'Biological Formula'},
+    {code:'OIL',th:'ออยล์',en:'Oil-Based Formula'},
+    {code:'DRY',th:'ควบแน่น',en:'Dry Concentrated Formula'},
+    {code:'TRM',th:'ทรีตเมนต์',en:'Treatment Formula'},
+    {code:'LEAR',th:'ทำความสะอาด',en:'Cleaning Formula'},
+    {code:'EYE',th:'เช็ดรอบดวงตา',en:'Eye Area Formula'},
+    {code:'POW',th:'แป้ง',en:'Powder Formula'},
+    {code:'HEAL',th:'สมานแผล',en:'Healing Formula'},
+    {code:'COAT',th:'บำรุงขน',en:'Coat Conditioning Formula'},
+    {code:'FUNG',th:'กำจัดเชื้อรา/ยีสต์',en:'Antifungal Formula'},
+    {code:'ODOR',th:'ดับกลิ่น',en:'Odor Control Formula'},
+  ],
+  animals:[
+    {code:'DOG',th:'สุนัข',en:'Dog'},
+    {code:'CAT',th:'แมว',en:'Cat'},
+    {code:'DM',th:'สุนัข/แมว',en:'Dog & Cat'},
+    {code:'OT',th:'อื่นๆ',en:'Other Animals'},
+    {code:'PT',th:'สัตว์เลี้ยงทั่วไป',en:'General Pets'},
+  ],
+  brands:[
+    {code:'OEM',th:'OEM (ผลิตให้ลูกค้า)',en:'OEM (Original Equipment Manufacturer)'},
+    {code:'OB',th:'แบรนด์บริษัท (Naive Innova)',en:'Own Brand (Naive Innova)'},
+    {code:'DIST',th:'Distributor',en:'Distributor Brand'},
+    {code:'BR',th:'แบรนด์อื่น',en:'Other Brand'},
+  ],
+  units:[
+    {code:'ML',th:'มิลลิลิตร',en:'Milliliter'},
+    {code:'G',th:'กรัม',en:'Gram'},
+    {code:'KG',th:'กิโลกรัม',en:'Kilogram'},
+    {code:'PCS',th:'ชิ้น',en:'Pieces'},
+    {code:'BOX',th:'กล่อง',en:'Box'},
+    {code:'PACK',th:'แพ็ค',en:'Pack'},
+  ],
+};
+const CAT_MAP={},SER_MAP={},ANI_MAP={},BRD_MAP={};
+LISTS.cats.forEach(x=>CAT_MAP[x.code]=x);
+LISTS.series.forEach(x=>SER_MAP[x.code]=x);
+LISTS.animals.forEach(x=>ANI_MAP[x.code]=x);
+LISTS.brands.forEach(x=>BRD_MAP[x.code]=x);
+
+// ========================================================
+// REFERENCE PAGE
+// ========================================================
+function rRef(){
+  const el=document.getElementById('p-ref');
+  function tbl(title,color,data){
+    return`<div style="background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.07)">
+      <div style="font-weight:800;font-size:13px;color:${color};margin-bottom:10px;border-left:4px solid ${color};padding-left:10px">${title}</div>
+      <table style="width:100%;border-collapse:collapse">
+        <tr style="background:${color}20"><th style="text-align:left;padding:6px 10px;font-size:11px;color:${color}">รหัส</th><th style="text-align:left;padding:6px 10px;font-size:11px;color:${color}">ภาษาไทย</th><th style="text-align:left;padding:6px 10px;font-size:11px;color:#888">English</th></tr>
+        ${data.map((r,i)=>`<tr style="background:${i%2?'#fafafa':'#fff'}"><td style="padding:7px 10px;font-family:monospace;font-size:13px;font-weight:800;color:${color}">${E(r.code)}</td><td style="padding:7px 10px;font-size:12px;font-weight:600">${E(r.th)}</td><td style="padding:7px 10px;font-size:11px;color:#888">${E(r.en)}</td></tr>`).join('')}
+      </table></div>`;
+  }
+  let h=`<div style="background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:16px">
+    <div style="font-weight:800;font-size:15px;margin-bottom:8px">📌 วิธีอ่านรหัสสินค้า</div>
+    <div style="font-family:monospace;font-size:18px;letter-spacing:3px;font-weight:700;margin-bottom:10px">SH &nbsp;- &nbsp;BIO &nbsp;- &nbsp;120ML &nbsp;- &nbsp;DM &nbsp;- &nbsp;OEM</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px">
+      <span style="background:rgba(255,255,255,.2);padding:5px 12px;border-radius:8px">① SH = กลุ่มสินค้า</span>
+      <span style="background:rgba(255,255,255,.2);padding:5px 12px;border-radius:8px">② BIO = สูตร/ซีรีส์</span>
+      <span style="background:rgba(255,255,255,.2);padding:5px 12px;border-radius:8px">③ 120ML = ปริมาณ + หน่วย</span>
+      <span style="background:rgba(255,255,255,.2);padding:5px 12px;border-radius:8px">④ DM = ประเภทสัตว์</span>
+      <span style="background:rgba(255,255,255,.2);padding:5px 12px;border-radius:8px">⑤ OEM = ประเภทแบรนด์</span>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px">
+    ${tbl('① กลุ่มสินค้า (Product Category)','#2E7D32',LISTS.cats)}
+    ${tbl('② สูตร/ซีรีส์ (Formula / Series)','#6A1B9A',LISTS.series)}
+    ${tbl('④ ประเภทสัตว์ (Animal Type)','#2E7D32',LISTS.animals)}
+    ${tbl('⑤ ประเภทแบรนด์ (Brand Type)','#E65100',LISTS.brands)}
+    ${tbl('③ หน่วย (Unit)','#37474F',LISTS.units)}
+  </div>`;
+  el.innerHTML=h;
+}
+
+// ========================================================
+// ADD PRODUCT PAGE
+// ========================================================
+let newProd={cat:'',ser:'',size:'',unit:'ML',animal:'DM',brand:'OEM',minStk:50,cust:''};
+function rAddProd(){
+  const el=document.getElementById('p-addprod');
+  if(!el)return;
+  function genId(){
+    if(!newProd.cat||!newProd.ser||!newProd.size||!newProd.unit||!newProd.animal||!newProd.brand)return'';
+    return newProd.cat+'-'+newProd.ser+'-'+newProd.size+newProd.unit+'-'+newProd.animal+'-'+newProd.brand;
+  }
+  function genName(){
+    if(!newProd.cat||!newProd.ser||!newProd.size||!newProd.unit||!newProd.animal)return'';
+    const catN=CAT_MAP[newProd.cat]?.th||newProd.cat;
+    const serN=SER_MAP[newProd.ser]?.th||newProd.ser;
+    const aniN=ANI_MAP[newProd.animal]?.th||newProd.animal;
+    const ul=(newProd.unit||'').toLowerCase();
+    return catN+serN+' '+aniN+' '+newProd.size+ul;
+  }
+  const pid=genId(),pname=genName();
+  const exists=!!(pid&&prods.find(p=>p.id===pid));
+  const ready=!!(pid&&!exists);
+
+  function dd(eid,list,val){
+    return`<select class="fi" id="${eid}" style="background-image:none">
+      <option value="">-- เลือก --</option>
+      ${list.map(x=>`<option value="${E(x.code)}"${val===x.code?' selected':''}>[${E(x.code)}] ${E(x.th)}</option>`).join('')}
+    </select>`;
+  }
+
+  let h=`<div style="max-width:660px">
+  <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:16px">
+    <div style="font-weight:800;font-size:16px;color:#1B5E20;margin-bottom:4px">➕ เพิ่มสินค้าใหม่</div>
+    <div style="font-size:12px;color:#888;margin-bottom:14px">เลือกข้อมูลด้านล่าง → ระบบสร้างรหัสและชื่อให้อัตโนมัติ</div>
+
+    <div style="background:${ready?'#E8F5E9':exists?'#FFEBEE':'#F5F5F5'};border:2px ${ready?'solid #4CAF50':exists?'solid #f44336':'dashed #ddd'};border-radius:10px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:10px;color:#888;font-weight:700;margin-bottom:5px">⚡ Preview รหัส + ชื่อสินค้า:</div>
+      <div style="font-family:monospace;font-size:15px;font-weight:800;color:${ready?'#1B5E20':exists?'#C62828':'#bbb'};letter-spacing:1px">${E(pid||'???-???-???-??-???')}</div>
+      <div style="font-size:13px;font-weight:600;margin-top:4px;color:${pname?'#2E7D32':'#ccc'}">${E(pname||'กรุณาเลือกข้อมูลให้ครบ')}</div>
+      ${exists?'<div style="color:#C62828;font-size:11px;margin-top:5px;font-weight:700">⚠️ รหัสนี้มีในระบบแล้ว — กรุณาตรวจสอบ</div>':''}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg"><div class="fl" style="color:#1B5E20">① กลุ่มสินค้า *</div>${dd('np-cat',LISTS.cats,newProd.cat)}</div>
+      <div class="fg"><div class="fl" style="color:#6A1B9A">② สูตร/ซีรีส์ *</div>${dd('np-ser',LISTS.series,newProd.ser)}</div>
+      <div class="fg"><div class="fl" style="color:#37474F">③ ปริมาณ (ตัวเลข) *</div><input class="fi" type="number" id="np-size" placeholder="เช่น 120, 30, 250" value="${E(newProd.size)}" min="1"></div>
+      <div class="fg"><div class="fl" style="color:#37474F">③ หน่วย *</div>${dd('np-unit',LISTS.units,newProd.unit)}</div>
+      <div class="fg"><div class="fl" style="color:#2E7D32">④ ประเภทสัตว์ *</div>${dd('np-animal',LISTS.animals,newProd.animal)}</div>
+      <div class="fg"><div class="fl" style="color:#E65100">⑤ ประเภทแบรนด์ *</div>${dd('np-brand',LISTS.brands,newProd.brand)}</div>
+      <div class="fg"><div class="fl">Min Stock <span style="font-weight:400;color:#aaa">(0=ไม่กำหนด)</span></div>
+        <input class="fi" type="number" id="np-min" value="${newProd.minStk}" min="0">
+        <div style="font-size:10px;color:#888;margin-top:3px">${newProd.brand==='OEM'?'OEM → แนะนำ 50':newProd.brand==='OB'?'Own Brand → แนะนำ 20':''}</div>
+      </div>
+      <div class="fg"><div class="fl">ลูกค้า / เจ้าของแบรนด์</div><input class="fi" id="np-cust" value="${E(newProd.cust)}" placeholder="${newProd.brand==='OEM'?'ชื่อลูกค้า OEM...':'Naive Innova'}"></div>
+    </div>
+    <button class="btn-sub" id="np-save" style="background:${ready?'linear-gradient(135deg,#1B5E20,#2E7D32)':'#ccc'};margin-top:4px" ${ready?'':'disabled'}>
+      ${exists?'⚠️ รหัสซ้ำ':!pid?'⬆️ เลือกข้อมูลให้ครบก่อน':'✅ เพิ่มสินค้า  '+E(pid)}
+    </button>
+  </div>
+
+  <div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.07)">
+    <div style="font-weight:700;font-size:13px;color:#555;margin-bottom:10px">📋 สินค้าในระบบปัจจุบัน (${prods.length} SKU)</div>
+    <div style="overflow-x:auto"><table class="tbl">
+      <thead><tr><th>รหัสสินค้า</th><th>ชื่อสินค้า</th><th>กลุ่ม</th><th>แบรนด์</th><th>Min</th></tr></thead>
+      <tbody>${prods.map(p=>`<tr>
+        <td style="font-family:monospace;font-size:10px;color:#2E7D32">${E(p.id)}</td>
+        <td style="font-size:12px;font-weight:600">${E(p.name)}</td>
+        <td><span class="badge b-cat">${E(p.cat)}</span></td>
+        <td><span class="badge ${p.brand==='OEM'?'b-oem':'b-ob'}">${E(p.brand)}</span></td>
+        <td style="font-size:11px;color:#888">${p.minStk||'—'}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>
+  </div></div>`;
+
+  el.innerHTML=h;
+
+  ['np-cat','np-ser','np-unit','np-animal','np-brand'].forEach(eid=>{
+    const inp=document.getElementById(eid);
+    if(!inp)return;
+    inp.addEventListener('change',()=>{
+      const key=eid.replace('np-','');
+      newProd[key]=inp.value;
+      if(eid==='np-brand'){newProd.minStk=inp.value==='OEM'?50:20}
+      rAddProd();
+    });
+  });
+  const sz=document.getElementById('np-size');
+  if(sz){
+    sz.addEventListener('input',()=>{newProd.size=sz.value;});
+    sz.addEventListener('change',()=>{newProd.size=sz.value;rAddProd();});
+  }
+  const mn=document.getElementById('np-min');
+  if(mn)mn.addEventListener('input',()=>{newProd.minStk=Number(mn.value)||0});
+  const cu=document.getElementById('np-cust');
+  if(cu)cu.addEventListener('input',()=>{newProd.cust=cu.value});
+
+  const sv=document.getElementById('np-save');
+  if(sv&&!sv.disabled){
+    sv.addEventListener('click', async ()=>{
+      if(!pid||exists)return;
+      const finalMin=Number(document.getElementById('np-min')?.value||0);
+      const finalCust=document.getElementById('np-cust')?.value||'';
+      const brandDisp=newProd.brand==='OEM'?'OEM':newProd.brand==='OB'?'Own Brand':newProd.brand==='DIST'?'Distributor':newProd.brand;
+      
+      const res = await fetch(`${API_URL}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({id:pid,name:pname,cat:CAT_MAP[newProd.cat]?.th||newProd.cat,ser:SER_MAP[newProd.ser]?.th||newProd.ser,size:newProd.size,unit:newProd.unit,animal:ANI_MAP[newProd.animal]?.th||newProd.animal,brand:brandDisp,minStk:finalMin,cust:finalCust})
+      });
+      if(res.ok) {
+        newProd={cat:'',ser:'',size:'',unit:'ML',animal:'DM',brand:'OEM',minStk:50,cust:''};
+        alert('✅ เพิ่มสินค้า '+pid+' สำเร็จแล้ว!');
+        syncAll();
+      } else {
+        const err = await res.json();
+        alert('❌ Error: ' + err.error);
+      }
+    });
+  }
+}
+
+// ========================================================
+// STOCK COUNT (ตรวจนับสต๊อก)
+// ========================================================
+let countSession={round:'',checker:'',date:new Date().toISOString().slice(0,10),counts:{}};
+// (countHistory is now declared at top)
+
+function rCount(){
+  const el=document.getElementById('p-count');
+  const s=calcStock();
+
+  // Build lot-level system counts
+  const lotData=[];
+  prods.forEach(p=>{
+    const lots=getLotsForProduct(p.id);
+    if(!lots.length){
+      lotData.push({pid:p.id,name:p.name,lot:'(ไม่มี Lot)',sysQty:s[p.id]||0,unit:p.unit,exp:''});
+    } else {
+      lots.forEach(l=>{
+        const bal=l.qi-l.qo;
+        if(bal>0||true) lotData.push({pid:p.id,name:p.name,lot:l.lot,sysQty:bal,unit:p.unit,exp:l.exp||''});
+      });
+    }
+  });
+
+  const rows=lotData.map((d,i)=>{
+    const cnt=countSession.counts[d.pid+'|'+d.lot];
+    const actual=cnt!==undefined?cnt:'';
+    const diff=actual!==''?Number(actual)-d.sysQty:'';
+    const diffStyle=diff===''?'color:#ccc':diff===0?'color:#2E7D32;font-weight:700':diff>0?'color:#1565C0;font-weight:700':'color:#C62828;font-weight:700';
+    const diffText=diff===''?'—':diff===0?'✅ ตรง':(diff>0?'+':'')+diff;
+    const expD=daysUntil(d.exp);
+    const expNote=d.exp?`<span style="font-size:10px;color:${expD!==null&&expD<0?'#C62828':expD!==null&&expD<=30?'#E65100':'#888'}">${fmtDate(d.exp)}</span>`:'<span style="color:#ccc;font-size:10px">—</span>';
+    return `<tr style="background:${i%2===0?'#fff':'#fafafa'}">
+      <td><span style="font-size:10px;font-family:monospace;color:#2E7D32">${E(d.pid)}</span><div style="font-size:11px;font-weight:600;color:#333;margin-top:2px">${E(d.name)}</div></td>
+      <td><span class="lot-tag">${E(d.lot)}</span></td>
+      <td style="text-align:center">${expNote}</td>
+      <td style="text-align:center;font-weight:700;font-size:15px">${d.sysQty} <span style="font-size:10px;color:#999">${d.unit}</span></td>
+      <td style="text-align:center"><input type="number" min="0" class="cnt-inp fi" data-key="${E(d.pid+'|'+d.lot)}" data-sys="${d.sysQty}" value="${actual}" placeholder="—" style="width:80px;text-align:center;padding:5px 8px;font-size:14px;font-weight:700"></td>
+      <td style="text-align:center;font-size:14px"><span style="${diffStyle}">${diffText}</span></td>
+    </tr>`;
+  }).join('');
+
+  const totalItems=lotData.length;
+  const filled=Object.keys(countSession.counts).length;
+  const pct=totalItems?Math.round(filled/totalItems*100):0;
+
+  let h=`<div style="max-width:900px">
+  <!-- Header card -->
+  <div style="background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:16px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px">🔍 ตรวจนับสต๊อก (Physical Count)</div>
+    <div style="font-size:12px;opacity:.85">นับจำนวนสินค้าจริงในคลัง เปรียบเทียบกับยอดในระบบ แล้วปรับยอดให้ตรง</div>
+  </div>
+
+  <!-- Session setup -->
+  <div style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.07)">
+    <div style="font-weight:700;font-size:13px;color:#1B5E20;margin-bottom:12px">⚙️ ข้อมูลการตรวจนับรอบนี้</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">รอบ / เลขที่ตรวจ</div>
+        <input class="fi" id="cnt-round" placeholder="เช่น รอบ มี.ค. 68" value="${E(countSession.round)}" style="font-size:13px"></div>
+      <div><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">ผู้ตรวจนับ</div>
+        <input class="fi" id="cnt-checker" placeholder="ชื่อพนักงาน" value="${E(countSession.checker)}" style="font-size:13px"></div>
+      <div><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">วันที่ตรวจ</div>
+        <input class="fi" type="date" id="cnt-date" value="${countSession.date}" style="font-size:13px"></div>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="background:#fff;border-radius:10px;padding:12px 16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-size:12px;font-weight:700;color:#555">ความคืบหน้าการตรวจนับ</span>
+      <span class="cnt-ctr" style="font-size:12px;font-weight:800;color:#2E7D32">${filled} / ${totalItems} รายการ (${pct}%)</span>
+    </div>
+    <div style="background:#e8f5e9;border-radius:8px;height:10px;overflow:hidden">
+      <div class="cnt-bar" style="background:linear-gradient(90deg,#2E7D32,#66BB6A);height:100%;width:${pct}%;transition:.3s;border-radius:8px"></div>
+    </div>
+  </div>
+
+  <!-- Count table -->
+  <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:14px">
+    <table class="tbl">
+      <thead><tr>
+        <th>สินค้า</th><th>Lot / Batch</th><th style="text-align:center">วันหมดอายุ</th>
+        <th style="text-align:center">ยอดในระบบ</th><th style="text-align:center">ยอดนับจริง</th><th style="text-align:center">ส่วนต่าง</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>
+
+  <!-- Save button -->
+  <div style="background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:14px">
+    <div style="font-size:11px;color:#888;margin-bottom:10px">🔐 การบันทึกผลตรวจนับจะปรับยอดสต๊อกอัตโนมัติ (ต้องยืนยัน Admin)</div>
+    <div style="display:flex;gap:10px">
+      <button id="cnt-save" class="btn-sub" style="background:linear-gradient(135deg,#1B5E20,#2E7D32);flex:1">✅ บันทึกผลตรวจนับ & ปรับยอด</button>
+      <button id="cnt-clear" style="padding:12px 18px;border:1.5px solid #ddd;background:#fff;border-radius:10px;cursor:pointer;font-size:13px;font-family:inherit;color:#888">🗑️ ล้างข้อมูล</button>
+    </div>
+  </div>
+
+  <!-- Count history -->
+  ${countHistory.length?`<div style="background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07)">
+    <div style="font-weight:700;font-size:13px;color:#555;margin-bottom:10px">📋 ประวัติการตรวจนับย้อนหลัง (${countHistory.length} รอบ)</div>
+    <div style="overflow-x:auto"><table class="tbl">
+      <thead><tr><th>รอบ</th><th>วันที่</th><th>ผู้ตรวจ</th><th style="text-align:center">รายการที่ปรับ</th><th>สถานะ</th></tr></thead>
+      <tbody>${countHistory.slice().reverse().map(c=>`<tr>
+        <td style="font-weight:700">${E(c.round||'—')}</td>
+        <td>${E(c.date||'')}</td>
+        <td>${E(c.checker||'—')}</td>
+        <td style="text-align:center;font-weight:700;color:#2E7D32">${c.adjCount||0} รายการ</td>
+        <td><span class="st-ok">✅ บันทึกแล้ว</span></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`:''}
+  </div>`;
+
+  el.innerHTML=h;
+
+  // Wire session fields
+  ['cnt-round','cnt-checker','cnt-date'].forEach(id=>{
+    const inp=document.getElementById(id);
+    if(inp)inp.addEventListener('change',()=>{
+      if(id==='cnt-round')countSession.round=inp.value;
+      else if(id==='cnt-checker')countSession.checker=inp.value;
+      else countSession.date=inp.value;
+    });
+  });
+
+  // Wire count inputs
+  el.querySelectorAll('.cnt-inp').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const key=inp.dataset.key;
+      const v=inp.value.trim();
+      const sysQty=Number(inp.dataset.sys)||0;
+      const tr=inp.closest('tr');
+      const diffCell=tr?tr.children[5]?.querySelector('span'):null;
+
+      if(v===''){
+        // ลบค่า → รีเซตกลับเป็น — (ยังไม่ได้นับ)
+        delete countSession.counts[key];
+        if(diffCell){diffCell.style.cssText='color:#ccc';diffCell.textContent='—';}
+      } else {
+        const actual=Number(v);
+        if(isNaN(actual)||actual<0){inp.value='';return;}
+        countSession.counts[key]=actual;
+        if(diffCell){
+          const diff=actual-sysQty;
+          diffCell.style.cssText=diff===0?'color:#2E7D32;font-weight:700':diff>0?'color:#1565C0;font-weight:700':'color:#C62828;font-weight:700';
+          diffCell.textContent=diff===0?'✅ ตรง':(diff>0?'+':'')+diff;
+        }
+      }
+      // Update progress bar & counter
+      const filled2=Object.keys(countSession.counts).length;
+      const pct2=totalItems?Math.round(filled2/totalItems*100):0;
+      const bar=el.querySelector('.cnt-bar');
+      if(bar)bar.style.width=pct2+'%';
+      const ctr=el.querySelector('.cnt-ctr');
+      if(ctr)ctr.textContent=filled2+' / '+totalItems+' รายการ ('+pct2+'%)';
+    });
+  });
+
+  // Save button
+  document.getElementById('cnt-save')?.addEventListener('click',()=>{
+    checkAdmin(()=>{
+      const adjItems=lotData.filter(d=>countSession.counts[d.pid+'|'+d.lot]!==undefined&&countSession.counts[d.pid+'|'+d.lot]!==d.sysQty);
+      if(!adjItems.length){alert('ไม่มีรายการที่ต้องปรับยอด (ยอดนับตรงกับระบบทั้งหมด)');return;}
+      if(!countSession.round){alert('กรุณาระบุรอบ / เลขที่ตรวจ');return;}
+      if(!countSession.checker){alert('กรุณาระบุชื่อผู้ตรวจนับ');return;}
+      const confirm=window.confirm(`จะปรับยอดสต๊อก ${adjItems.length} รายการ ตามผลตรวจนับ ใช่หรือไม่?\n\n${adjItems.map(d=>{const diff=countSession.counts[d.pid+'|'+d.lot]-d.sysQty;return `• ${d.lot} (${d.pid}): ${diff>0?'+':''}${diff}`}).join('\n')}`);
+      if(!confirm)return;
+      const today=countSession.date||new Date().toISOString().slice(0,10);
+      const dStr=today.split('-').reverse().join('/');
+      
+      const newTxs = adjItems.map((d,i) => {
+        const actual=countSession.counts[d.pid+'|'+d.lot];
+        const diff=actual-d.sysQty;
+        const lot=d.lot==='(ไม่มี Lot)'?`ADJ-${today.replace(/-/g,'').slice(2)}-${i+1}`:d.lot;
+        const prod=prods.find(x=>x.id===d.pid);
+        return {
+          id:Date.now()+i,
+          lot,d:dStr,
+          pid:d.pid,pname:prod?.name||d.pid,cat:prod?.cat||'',
+          t:diff>0?'adj_in':'adj_out',
+          mfg:'',exp:d.exp||'',
+          ref:countSession.round||'ADJ',
+          cust:prod?.cust||'',
+          qi:diff>0?diff:0,qo:diff<0?Math.abs(diff):0,
+          note:`ตรวจนับ: จริง ${actual} ระบบ ${d.sysQty} | ผู้ตรวจ: ${countSession.checker}`
+        };
+      });
+
+      // Save all adj transactions and the session
+      Promise.all([
+        ...newTxs.map(tx => fetch(`${API_URL}/tx`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(tx) })),
+        fetch(`${API_URL}/count-history`, { 
+          method: 'POST', 
+          headers: {'Content-Type':'application/json'}, 
+          body: JSON.stringify({round:countSession.round,date:today,checker:countSession.checker,adjCount:adjItems.length}) 
+        })
+      ]).then(() => {
+        countSession={round:'',checker:'',date:new Date().toISOString().slice(0,10),counts:{}};
+        alert('✅ บันทึกผลตรวจนับสำเร็จ! ปรับยอดสต๊อก '+adjItems.length+' รายการ');
+        syncAll();
+      });
+    });
+  });
+
+  // Clear button
+  document.getElementById('cnt-clear')?.addEventListener('click',()=>{
+    if(window.confirm('ล้างข้อมูลที่กรอกไว้ทั้งหมด?')){
+      countSession.counts={};rCount();
+    }
+  });
+}
+
+// ========================================================
+// STOCK ANALYSIS (วิเคราะห์สต๊อก)
+// ========================================================
+function rAnalysis(){
+  const el=document.getElementById('p-analysis');
+  const s=calcStock();
+  const today=new Date().toISOString().slice(0,10);
+
+  // Zone classification per product
+  const zones={green:[],yellow:[],red:[],oem:[]};
+  prods.forEach(p=>{
+    const qty=s[p.id]||0;
+    const exp=getEarliestExp(p.id);
+    const expD=daysUntil(exp);
+    const isExpired=expD!==null&&expD<0;
+    const expiringSoon=expD!==null&&expD<=60;
+    if(qty<0||isExpired) zones.red.push({...p,qty,exp,expD});
+    else if(p.brand==='OEM') zones.oem.push({...p,qty,exp,expD});
+    else if(qty<p.minStk||expiringSoon) zones.yellow.push({...p,qty,exp,expD});
+    else zones.green.push({...p,qty,exp,expD});
+  });
+
+  // Movement stats (last 90 days)
+  const d90=new Date(); d90.setDate(d90.getDate()-90);
+  const d90str=d90.toISOString().slice(0,10);
+  // แปลง t.d (DD/MM/YYYY หรือ DD/MM/YYYY HH:MM) → ISO YYYY-MM-DD
+  function txISO(d){
+    if(!d)return'';
+    const p=d.split('/');
+    if(p.length>=3)return p[2].slice(0,4)+'-'+p[1]+'-'+p[0];
+    return d.slice(0,10);
+  }
+  const moveMap={};
+  txs.forEach(t=>{
+    if(txISO(t.d)>=d90str&&t.qo>0){
+      moveMap[t.pid]=(moveMap[t.pid]||0)+t.qo;
+    }
+  });
+  const topMovers=Object.entries(moveMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const deadStock=prods.filter(p=>{
+    const lastMove=txs.filter(t=>t.pid===p.id).sort((a,b)=>txISO(b.d).localeCompare(txISO(a.d)))[0];
+    return !lastMove||txISO(lastMove.d)<d90str;
+  });
+
+  // Expiry timeline
+  const expItems=[];
+  prods.forEach(p=>{
+    getLotsForProduct(p.id).forEach(l=>{
+      if(l.exp&&l.qi-l.qo>0){
+        const d=daysUntil(l.exp);
+        expItems.push({pid:p.id,name:p.name,lot:l.lot,qty:l.qi-l.qo,unit:p.unit,exp:l.exp,days:d});
+      }
+    });
+  });
+  expItems.sort((a,b)=>(a.days??9999)-(b.days??9999));
+  const expSoon=expItems.filter(e=>e.days!==null&&e.days<=90);
+
+  // Category breakdown
+  const catMap={};
+  prods.forEach(p=>{
+    const qty=Math.max(0,s[p.id]||0);
+    catMap[p.cat]=(catMap[p.cat]||0)+qty;
+  });
+  const maxCat=Math.max(...Object.values(catMap),1);
+
+  function zoneCard(label,color,bg,emoji,items,note){
+    return `<div style="background:${bg};border-radius:14px;padding:16px 18px;border:2px solid ${color}">
+      <div style="font-size:22px;margin-bottom:6px">${emoji}</div>
+      <div style="font-size:26px;font-weight:800;color:${color}">${items.length}</div>
+      <div style="font-size:12px;font-weight:700;color:${color};margin-top:2px">${label}</div>
+      <div style="font-size:10px;color:#888;margin-top:4px">${note}</div>
+    </div>`;
+  }
+
+  let h=`<div style="max-width:960px">
+  <!-- Zone cards -->
+  <div style="background:linear-gradient(135deg,#1B5E20,#2E7D32,#1A237E);color:#fff;border-radius:14px;padding:16px 20px;margin-bottom:16px">
+    <div style="font-size:16px;font-weight:800;margin-bottom:2px">📊 วิเคราะห์สต๊อกสินค้า</div>
+    <div style="font-size:12px;opacity:.8">ภาพรวมสถานะสต๊อก | ข้อมูล ณ วันนี้ ${today}</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+    ${zoneCard('Zone เขียว','#2E7D32','#E8F5E9','🟢',zones.green,'ปกติ — สต๊อกพอ ไม่ใกล้หมดอายุ')}
+    ${zoneCard('Zone เหลือง','#E65100','#FFF3E0','🟡',zones.yellow,'ระวัง — ต่ำกว่า Min หรือใกล้หมดอายุ (≤60 วัน)')}
+    ${zoneCard('Zone แดง','#C62828','#FFEBEE','🔴',zones.red,'วิกฤต — สต๊อกติดลบ หรือหมดอายุแล้ว')}
+    ${zoneCard('Zone OEM','#1565C0','#E3F2FD','🔵',zones.oem,'OEM — สินค้าผลิตให้ลูกค้า (Min Stock 50)')}
+  </div>
+
+  <!-- Zone detail tables -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+
+    ${zones.red.length?`<div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:3px solid #C62828">
+      <div style="font-weight:700;font-size:13px;color:#C62828;margin-bottom:10px">🔴 Zone แดง — ต้องดำเนินการด่วน</div>
+      ${zones.red.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0">
+        <div><div style="font-size:11px;font-weight:600">${E(p.name)}</div>
+             <div style="font-size:10px;color:#999">${E(p.id)}</div></div>
+        <div style="text-align:right">
+          <div style="font-weight:800;font-size:15px;color:${p.qty<0?'#C62828':'#E65100'}">${p.qty}</div>
+          ${p.expD!==null&&p.expD<0?'<div style="font-size:9px;color:#C62828">⚠️ หมดอายุแล้ว</div>':''}
+        </div>
+      </div>`).join('')}
+    </div>`:`<div style="background:#E8F5E9;border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:center;border:2px dashed #A5D6A7">
+      <div style="text-align:center;color:#2E7D32"><div style="font-size:32px">🎉</div><div style="font-weight:700;margin-top:8px">ไม่มีสินค้า Zone แดง</div></div>
+    </div>`}
+
+    ${zones.yellow.length?`<div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:3px solid #E65100">
+      <div style="font-weight:700;font-size:13px;color:#E65100;margin-bottom:10px">🟡 Zone เหลือง — ต้องติดตาม</div>
+      ${zones.yellow.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0">
+        <div><div style="font-size:11px;font-weight:600">${E(p.name)}</div>
+             <div style="font-size:10px;color:#999">${E(p.id)}</div></div>
+        <div style="text-align:right">
+          <div style="font-weight:800;font-size:15px;color:#E65100">${p.qty}<span style="font-size:10px;color:#999;font-weight:400"> / min ${p.minStk}</span></div>
+          ${p.expD!==null&&p.expD<=60&&p.expD>=0?`<div style="font-size:9px;color:#E65100">⏰ หมดใน ${p.expD} วัน</div>`:''}
+        </div>
+      </div>`).join('')}
+    </div>`:`<div style="background:#FFF8E1;border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:center;border:2px dashed #FFD54F">
+      <div style="text-align:center;color:#E65100"><div style="font-size:32px">✨</div><div style="font-weight:700;margin-top:8px">ไม่มีสินค้า Zone เหลือง</div></div>
+    </div>`}
+  </div>
+
+  <!-- Bar chart by product -->
+  <div style="background:#fff;border-radius:12px;padding:16px 20px;box-shadow:0 2px 8px rgba(0,0,0,.07);margin-bottom:14px">
+    <div style="font-weight:700;font-size:13px;color:#333;margin-bottom:14px">📦 ยอดสต๊อกปัจจุบันแต่ละสินค้า</div>
+    ${prods.map(p=>{
+      const qty=s[p.id]||0;
+      const pct2=p.minStk>0?Math.min(100,Math.max(0,qty/Math.max(qty,p.minStk)*100)):qty>0?50:0;
+      const barColor=qty<0?'#C62828':p.minStk>0&&qty<p.minStk?'#E65100':'#2E7D32';
+      const minPct=p.minStk>0?Math.min(100,p.minStk/Math.max(qty,p.minStk,1)*100):0;
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-size:11px;font-weight:600;color:#333">${E(p.name)}</span>
+          <span style="font-size:12px;font-weight:800;color:${barColor}">${qty} ${p.unit}${p.minStk>0?` <span style="font-size:10px;color:#aaa;font-weight:400">/ min ${p.minStk}</span>`:''}</span>
+        </div>
+        <div style="background:#f0f0f0;border-radius:6px;height:12px;position:relative;overflow:hidden">
+          <div style="background:${barColor};height:100%;width:${Math.max(0,pct2)}%;border-radius:6px;transition:.3s"></div>
+          ${p.minStk>0?`<div style="position:absolute;left:${minPct}%;top:0;bottom:0;width:2px;background:#E65100;opacity:.6"></div>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <!-- Top movers -->
+    <div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:13px;color:#333;margin-bottom:10px">🏃 สินค้าที่เคลื่อนไหวมากสุด (90 วัน)</div>
+      ${topMovers.length?topMovers.map(([pid,qty],i)=>{
+        const p=prods.find(x=>x.id===pid);
+        const maxQ=topMovers[0][1];
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+            <span style="font-size:11px;font-weight:600">${i+1}. ${E(p?.name||pid)}</span>
+            <span style="font-size:11px;font-weight:800;color:#2E7D32">-${qty} ${p?.unit||''}</span>
+          </div>
+          <div style="background:#e8f5e9;border-radius:4px;height:8px">
+            <div style="background:#2E7D32;height:100%;width:${qty/maxQ*100}%;border-radius:4px"></div>
+          </div>
+        </div>`;
+      }).join(''):'<div style="color:#aaa;font-size:12px;text-align:center;padding:20px">ยังไม่มีข้อมูลการเคลื่อนไหว 90 วัน</div>'}
+    </div>
+
+    <!-- Expiry alert -->
+    <div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:13px;color:#333;margin-bottom:10px">⏰ สินค้าใกล้หมดอายุ (≤90 วัน)</div>
+      ${expSoon.length?expSoon.slice(0,8).map(e=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f5f5">
+        <div>
+          <div style="font-size:11px;font-weight:600">${E(e.name)}</div>
+          <span class="lot-tag">${E(e.lot)}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;font-weight:800;color:${e.days!==null&&e.days<0?'#C62828':e.days!==null&&e.days<=30?'#C62828':'#E65100'}">${e.days!==null&&e.days<0?'หมดแล้ว!':'อีก '+e.days+' วัน'}</div>
+          <div style="font-size:10px;color:#888">${e.qty} ${e.unit} | ${fmtDate(e.exp)}</div>
+        </div>
+      </div>`).join(''):`<div style="color:#888;font-size:12px;text-align:center;padding:20px">✅ ไม่มีสินค้าหมดอายุใน 90 วัน</div>`}
+    </div>
+  </div>
+
+  <!-- Dead stock + Category breakdown -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:13px;color:#333;margin-bottom:10px">💤 Dead Stock (ไม่มีการเคลื่อนไหว > 90 วัน)</div>
+      ${deadStock.length?deadStock.map(p=>`<div style="padding:5px 0;border-bottom:1px solid #f5f5f5">
+        <div style="font-size:11px;font-weight:600">${E(p.name)}</div>
+        <div style="font-size:10px;color:#aaa">${E(p.id)} | คงเหลือ: ${s[p.id]||0} ${p.unit}</div>
+      </div>`).join(''):`<div style="color:#888;font-size:12px;text-align:center;padding:20px">✅ ทุกสินค้ามีการเคลื่อนไหวใน 90 วัน</div>`}
+    </div>
+
+    <div style="background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:13px;color:#333;margin-bottom:10px">🗂️ สต๊อกแยกตามกลุ่มสินค้า</div>
+      ${Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([cat,qty])=>`<div style="margin-bottom:9px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+          <span style="font-size:11px;font-weight:600">${E(cat)}</span>
+          <span style="font-size:11px;font-weight:800;color:#2E7D32">${qty}</span>
+        </div>
+        <div style="background:#e8f5e9;border-radius:4px;height:8px">
+          <div style="background:linear-gradient(90deg,#1B5E20,#4CAF50);height:100%;width:${qty/maxCat*100}%;border-radius:4px"></div>
+        </div>
+      </div>`).join('')}
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid #eee;display:flex;gap:12px">
+        <div style="text-align:center;flex:1"><div style="font-size:18px;font-weight:800;color:#1565C0">${prods.filter(p=>p.brand==='OEM').length}</div><div style="font-size:10px;color:#888">SKU OEM</div></div>
+        <div style="text-align:center;flex:1"><div style="font-size:18px;font-weight:800;color:#2E7D32">${prods.filter(p=>p.brand==='Own Brand').length}</div><div style="font-size:10px;color:#888">SKU Own Brand</div></div>
+        <div style="text-align:center;flex:1"><div style="font-size:18px;font-weight:800;color:#333">${prods.length}</div><div style="font-size:10px;color:#888">SKU รวม</div></div>
+      </div>
+    </div>
+  </div>
+  </div>`;
+
+  el.innerHTML=h;
+}
+
+initTabs();syncAll();
+</script>
+</body>
+</html>
