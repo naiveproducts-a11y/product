@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Naive Innova — สต๊อกสินค้า</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#EDF6EE;color:#333;min-height:100vh}
+
+.header{background:linear-gradient(135deg,#1B4D2C,#2E7D32,#1A237E);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px}
+.header .logo{font-size:24px}
+.header h1{font-size:15px;font-weight:700}
+.header p{font-size:10px;opacity:.75;margin-top:1px}
+
+.page{padding:14px;max-width:500px;margin:0 auto}
+
+/* Product card */
+.prod-card{background:#fff;border-radius:14px;padding:18px;box-shadow:0 3px 14px rgba(0,0,0,.1);margin-bottom:14px}
+.prod-id{font-family:monospace;font-size:10px;color:#aaa;margin-bottom:4px}
+.prod-name{font-size:17px;font-weight:800;color:#1B5E20;line-height:1.3;margin-bottom:10px}
+.prod-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.badge{padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700}
+.b-cat{background:#FFF8E1;color:#E65100}
+.b-brand{background:#E3F2FD;color:#1565C0}
+.b-oem{background:#E3F2FD;color:#1565C0}
+.b-ob{background:#E8F5E9;color:#2E7D32}
+
+/* Stock display */
+.stock-row{display:flex;gap:10px;margin-bottom:14px}
+.stock-box{flex:1;text-align:center;border-radius:12px;padding:14px 10px}
+.stock-val{font-size:36px;font-weight:900;line-height:1}
+.stock-lbl{font-size:10px;font-weight:700;color:#888;margin-top:3px;text-transform:uppercase}
+.s-ok{background:#E8F5E9}.s-ok .stock-val{color:#2E7D32}
+.s-low{background:#FFF3E0}.s-low .stock-val{color:#E65100}
+.s-neg{background:#FFEBEE}.s-neg .stock-val{color:#C62828}
+.s-min{background:#F3E5F5}.s-min .stock-val{color:#6A1B9A}
+
+/* Status pill */
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:14px}
+.sp-ok{background:#E8F5E9;color:#2E7D32}
+.sp-low{background:#FFF3E0;color:#E65100}
+.sp-neg{background:#FFEBEE;color:#C62828}
+.sp-nomin{background:#F5F5F5;color:#888}
+
+/* Lot table */
+.lot-section{background:#F8FBF8;border-radius:10px;padding:12px;margin-bottom:14px}
+.lot-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.lot-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #eee}
+.lot-item:last-child{border-bottom:none}
+.lot-tag{font-family:monospace;font-size:11px;background:#E8F5E9;color:#2E7D32;padding:2px 7px;border-radius:5px}
+.lot-qty{font-weight:800;font-size:15px;color:#2E7D32}
+.lot-exp{font-size:10px;color:#888;margin-top:2px}
+.lot-fifo{font-size:9px;background:#E3F2FD;color:#1565C0;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700}
+
+/* Action buttons */
+.action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.act-btn{padding:16px 10px;border-radius:12px;border:none;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:4px;transition:.15s;-webkit-tap-highlight-color:transparent}
+.act-btn:active{transform:scale(.97)}
+.act-btn .icon{font-size:24px}
+.act-btn .lbl{font-size:12px}
+.btn-in-act{background:linear-gradient(135deg,#1B5E20,#388E3C);color:#fff;box-shadow:0 4px 14px rgba(46,125,50,.35)}
+.btn-out-act{background:linear-gradient(135deg,#BF360C,#E64A19);color:#fff;box-shadow:0 4px 14px rgba(191,54,12,.35)}
+
+/* Form panels */
+.form-panel{background:#fff;border-radius:14px;padding:18px;box-shadow:0 3px 14px rgba(0,0,0,.1);margin-bottom:14px;display:none}
+.form-panel.show{display:block}
+.fp-title{font-size:14px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.fg{margin-bottom:12px}
+.fl{font-size:11px;font-weight:700;color:#555;margin-bottom:4px;display:block}
+.fi{width:100%;padding:10px 13px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;font-family:inherit;outline:none;transition:.2s}
+.fi:focus{border-color:#388E3C;box-shadow:0 0 0 3px rgba(46,125,50,.12)}
+.fi[readonly]{background:#F5F5F5;color:#888}
+.fifo-info{background:#E3F2FD;border-radius:8px;padding:10px 12px;font-size:12px;color:#1565C0;margin-bottom:12px;display:flex;align-items:flex-start;gap:7px}
+.btn-sub{width:100%;padding:14px;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px;transition:.15s}
+.btn-sub:active{transform:scale(.98)}
+.btn-cancel{width:100%;padding:11px;border:1.5px solid #e0e0e0;border-radius:10px;background:#fff;color:#888;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:24px;font-size:13px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9000;text-align:center;max-width:85vw}
+.toast.show{opacity:1}
+.toast.ok{background:#1B5E20;color:#fff}
+.toast.err{background:#C62828;color:#fff}
+
+/* Loading */
+.loading{text-align:center;padding:60px 20px;color:#aaa}
+.loading .spin{font-size:32px;animation:spin 1s linear infinite;display:block;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Error */
+.err-box{background:#FFEBEE;border-radius:12px;padding:24px;text-align:center;margin:16px 0}
+.err-box .icon{font-size:40px;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🌿</div>
+  <div>
+    <h1>Naive Innova Stock</h1>
+    <p>สแกน QR สำหรับรับ / เบิกสินค้า</p>
+  </div>
+</div>
+
+<div class="page" id="page">
+  <div class="loading"><span class="spin">⏳</span>กำลังโหลดข้อมูล...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+let prod = null, allTxs = [], qty = 0, lots = [];
+
+// ── URL param ──────────────────────────────────────────
+const pid = new URLSearchParams(location.search).get('id');
+
+// ── Helpers ────────────────────────────────────────────
+function E(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+function fmtDate(s){
+  if(!s) return '—';
+  if(s.includes('/')) return s;
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return s;
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()+543}`;
+}
+
+function daysUntil(s){
+  if(!s) return null;
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return null;
+  return Math.round((d - new Date()) / 86400000);
+}
+
+function parseDMY(s){
+  if(!s) return null;
+  const p = String(s).split('/');
+  if(p.length !== 3) return null;
+  return new Date(+p[2], +p[1]-1, +p[0]);
+}
+
+function autoLotNo(){
+  const prefix = pid.split('-')[0].toUpperCase().slice(0,4);
+  const n = new Date();
+  const dd = String(n.getDate()).padStart(2,'0');
+  const mm = String(n.getMonth()+1).padStart(2,'0');
+  const yy = String(n.getFullYear()).slice(2);
+  const today = `${dd}${mm}${yy}`;
+  const existing = allTxs.filter(t=>t.pid===pid&&(t.lot||'').includes(`${prefix}-${today}`)).length;
+  return `${prefix}-${today}-${existing+1}`;
+}
+
+function calcLots(){
+  const map = {};
+  allTxs.filter(t=>t.pid===pid).forEach(t=>{
+    const k = t.lot||'unknown';
+    if(!map[k]) map[k]={lot:k,mfg:t.mfg||'',exp:t.exp||'',qi:0,qo:0};
+    map[k].qi += (t.qi||0);
+    map[k].qo += (t.qo||0);
+    if(t.exp&&(!map[k].exp||t.exp>map[k].exp)) map[k].exp=t.exp;
+    if(t.mfg&&(!map[k].mfg||t.mfg>map[k].mfg)) map[k].mfg=t.mfg;
+  });
+  return Object.values(map).filter(l=>l.qi-l.qo>0).sort((a,b)=>{
+    if(!a.exp) return 1; if(!b.exp) return -1;
+    return new Date(a.exp)-new Date(b.exp);
+  });
+}
+
+function showToast(msg, type='ok'){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+function today8601(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function todayDMY(){
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+
+// ── Render ──────────────────────────────────────────────
+function render(){
+  qty = allTxs.filter(t=>t.pid===pid).reduce((a,t)=>a+(t.qi||0)-(t.qo||0), 0);
+  lots = calcLots();
+  const fifoLot = lots[0] || null;
+
+  let stkClass = qty<0?'s-neg':prod.minStk>0&&qty<prod.minStk?'s-low':'s-ok';
+  let statusHtml = prod.minStk>0
+    ?(qty<0?'<span class="status-pill sp-neg">🔴 สต๊อกติดลบ!</span>'
+      :qty<prod.minStk?'<span class="status-pill sp-low">⚠️ ต่ำกว่า Min Stock</span>'
+      :'<span class="status-pill sp-ok">✅ สต๊อกปกติ</span>')
+    :'<span class="status-pill sp-nomin">— OEM (ไม่กำหนด Min)</span>';
+
+  const brandClass = prod.brand==='OEM'||prod.brand==='OB'?`b-${prod.brand.toLowerCase()}`:'b-brand';
+
+  let lotsHtml = '';
+  if(lots.length){
+    lotsHtml = `<div class="lot-section">
+      <div class="lot-title">Lots คงเหลือ (เรียงตาม FIFO)</div>
+      ${lots.map((l,i)=>{
+        const d = daysUntil(l.exp);
+        let expStyle='color:#888', expNote='';
+        if(l.exp){
+          if(d<0){expStyle='color:#C62828;font-weight:700';expNote='🔴 หมดอายุแล้ว';}
+          else if(d<=30){expStyle='color:#C62828;font-weight:700';expNote=`⚠️ อีก ${d} วัน`;}
+          else if(d<=90){expStyle='color:#E65100';expNote=`⏰ อีก ${d} วัน`;}
+          else expNote=`อีก ${d} วัน`;
+        }
+        return `<div class="lot-item">
+          <div>
+            <span class="lot-tag">${E(l.lot)}</span>${i===0?'<span class="lot-fifo">FIFO ต่อไป</span>':''}
+            <div style="margin-top:4px;font-size:11px;color:#888">
+              MFG: ${fmtDate(l.mfg)} &nbsp;|&nbsp; EXP: <span style="${expStyle}">${fmtDate(l.exp)} ${expNote}</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="lot-qty">${l.qi-l.qo}</div>
+            <div style="font-size:10px;color:#aaa">${prod.unit}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } else {
+    lotsHtml = `<div class="lot-section"><div style="color:#aaa;font-size:12px;text-align:center;padding:8px">ยังไม่มี Lot ในสต๊อก</div></div>`;
+  }
+
+  const fifoInfo = fifoLot
+    ? `<div class="fifo-info">ℹ️ ระบบจะเบิกออกจาก Lot <strong>${E(fifoLot.lot)}</strong> อัตโนมัติ (EXP: ${fmtDate(fifoLot.exp)})<br>คงเหลือ: <strong>${fifoLot.qi-fifoLot.qo} ${prod.unit}</strong></div>`
+    : `<div class="fifo-info" style="background:#FFF3E0;color:#E65100">⚠️ ไม่มี Lot ในสต๊อก ไม่สามารถเบิกออกได้</div>`;
+
+  document.getElementById('page').innerHTML = `
+    <!-- Product info -->
+    <div class="prod-card">
+      <div class="prod-id">${E(prod.id)}</div>
+      <div class="prod-name">${E(prod.name)}</div>
+      <div class="prod-badges">
+        <span class="badge b-cat">${E(prod.cat)}</span>
+        <span class="badge ${brandClass}">${E(prod.brand)}</span>
+        ${prod.cust?`<span class="badge b-brand">👤 ${E(prod.cust)}</span>`:''}
+      </div>
+      <div class="stock-row">
+        <div class="stock-box ${stkClass}">
+          <div class="stock-val">${qty}</div>
+          <div class="stock-lbl">${E(prod.unit)} คงเหลือ</div>
+        </div>
+        <div class="stock-box s-min">
+          <div class="stock-val">${prod.minStk||'—'}</div>
+          <div class="stock-lbl">Min Stock</div>
+        </div>
+      </div>
+      ${statusHtml}
+    </div>
+
+    ${lotsHtml}
+
+    <!-- Action buttons -->
+    <div class="action-row">
+      <button class="act-btn btn-in-act" id="btn-open-in">
+        <span class="icon">📥</span><span class="lbl">รับสินค้าเข้า</span>
+      </button>
+      <button class="act-btn btn-out-act" id="btn-open-out">
+        <span class="icon">📤</span><span class="lbl">เบิกสินค้าออก</span>
+      </button>
+    </div>
+
+    <!-- รับเข้า Form -->
+    <div class="form-panel" id="form-in">
+      <div class="fp-title" style="color:#2E7D32">📥 รับสินค้าเข้าสต๊อก</div>
+      <div class="fg">
+        <label class="fl">Lot / Batch (ระบบสร้างให้อัตโนมัติ)</label>
+        <input class="fi" id="in-lot" value="${autoLotNo()}" placeholder="เช่น SHB-310326-1">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fg">
+          <label class="fl">วันที่ผลิต</label>
+          <input type="date" class="fi" id="in-mfg">
+        </div>
+        <div class="fg">
+          <label class="fl">วันหมดอายุ</label>
+          <input type="date" class="fi" id="in-exp">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">จำนวนที่รับเข้า (${prod.unit})</label>
+        <input type="number" class="fi" id="in-qty" placeholder="0" min="1" style="font-size:20px;font-weight:700;text-align:center">
+      </div>
+      <div class="fg">
+        <label class="fl">เอกสารอ้างอิง (PO / INV)</label>
+        <input class="fi" id="in-ref" placeholder="เช่น PO-0005">
+      </div>
+      <div class="fg">
+        <label class="fl">หมายเหตุ</label>
+        <input class="fi" id="in-note" placeholder="(ไม่บังคับ)">
+      </div>
+      <button class="btn-sub" style="background:linear-gradient(135deg,#1B5E20,#388E3C)" id="in-submit">✅ บันทึกรับเข้า</button>
+      <button class="btn-cancel" id="in-cancel">ยกเลิก</button>
+    </div>
+
+    <!-- เบิกออก Form -->
+    <div class="form-panel" id="form-out">
+      <div class="fp-title" style="color:#E64A19">📤 เบิกสินค้าออก (FIFO)</div>
+      ${fifoInfo}
+      <div class="fg">
+        <label class="fl">Lot ที่เบิก (FIFO อัตโนมัติ)</label>
+        <input class="fi fi-auto" id="out-lot" value="${fifoLot?E(fifoLot.lot):''}" readonly>
+      </div>
+      <div class="fg">
+        <label class="fl">จำนวนที่เบิกออก (${prod.unit}) ${fifoLot?`[สูงสุด ${fifoLot.qi-fifoLot.qo}]`:''}</label>
+        <input type="number" class="fi" id="out-qty" placeholder="0" min="1" ${fifoLot?`max="${fifoLot.qi-fifoLot.qo}"`:'disabled'} style="font-size:20px;font-weight:700;text-align:center">
+      </div>
+      <div class="fg">
+        <label class="fl">เอกสารอ้างอิง (SO / อื่นๆ)</label>
+        <input class="fi" id="out-ref" placeholder="เช่น SO-0005">
+      </div>
+      <div class="fg">
+        <label class="fl">หมายเหตุ</label>
+        <input class="fi" id="out-note" placeholder="(ไม่บังคับ)">
+      </div>
+      <button class="btn-sub" style="background:linear-gradient(135deg,#BF360C,#E64A19)" id="out-submit" ${!fifoLot?'disabled style="opacity:.5;cursor:not-allowed"':''}>✅ บันทึกเบิกออก</button>
+      <button class="btn-cancel" id="out-cancel">ยกเลิก</button>
+    </div>
+  `;
+
+  // ── Event wiring ───────────────────────────────────────
+  document.getElementById('btn-open-in').onclick = ()=>{ closeAll(); document.getElementById('form-in').classList.add('show'); document.getElementById('form-in').scrollIntoView({behavior:'smooth'}); };
+  document.getElementById('btn-open-out').onclick = ()=>{ if(!fifoLot){showToast('ไม่มี Lot ในสต๊อก','err');return;} closeAll(); document.getElementById('form-out').classList.add('show'); document.getElementById('form-out').scrollIntoView({behavior:'smooth'}); };
+  document.getElementById('in-cancel').onclick = closeAll;
+  document.getElementById('out-cancel').onclick = closeAll;
+
+  document.getElementById('in-submit').onclick = submitIn;
+  document.getElementById('out-submit').onclick = submitOut;
+}
+
+function closeAll(){
+  document.querySelectorAll('.form-panel').forEach(p=>p.classList.remove('show'));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Submit รับเข้า ──────────────────────────────────────
+async function submitIn(){
+  const lot  = document.getElementById('in-lot').value.trim();
+  const mfg  = document.getElementById('in-mfg').value;
+  const exp  = document.getElementById('in-exp').value;
+  const qtyV = parseInt(document.getElementById('in-qty').value)||0;
+  const ref  = document.getElementById('in-ref').value.trim();
+  const note = document.getElementById('in-note').value.trim();
+
+  if(!lot){ showToast('กรุณาระบุ Lot/Batch','err'); return; }
+  if(qtyV<=0){ showToast('กรุณาระบุจำนวนที่รับเข้า','err'); return; }
+
+  const btn = document.getElementById('in-submit');
+  btn.disabled=true; btn.textContent='⏳ กำลังบันทึก...';
+
+  try{
+    const tx = {
+      lot, d: todayDMY(), pid: prod.id, pname: prod.name, cat: prod.cat,
+      t: 'in', mfg, exp, ref, cust: prod.cust||'',
+      recorder: 'QR Scan', qi: qtyV, qo: 0, note
+    };
+    await fetch(`${API}/tx`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(tx)});
+    allTxs.push({...tx, id: Date.now()});
+    showToast(`✅ รับเข้า ${qtyV} ${prod.unit} สำเร็จ`);
+    closeAll(); render();
+  } catch(e){
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'err');
+  } finally { btn.disabled=false; btn.textContent='✅ บันทึกรับเข้า'; }
+}
+
+// ── Submit เบิกออก (FIFO) ──────────────────────────────
+async function submitOut(){
+  const fifoLot = lots[0];
+  if(!fifoLot){ showToast('ไม่มี Lot ในสต๊อก','err'); return; }
+
+  const qtyV = parseInt(document.getElementById('out-qty').value)||0;
+  const ref  = document.getElementById('out-ref').value.trim();
+  const note = document.getElementById('out-note').value.trim();
+  const maxQ = fifoLot.qi - fifoLot.qo;
+
+  if(qtyV<=0){ showToast('กรุณาระบุจำนวนที่เบิกออก','err'); return; }
+  if(qtyV>maxQ){ showToast(`เบิกได้สูงสุด ${maxQ} ${prod.unit} จาก Lot นี้`,'err'); return; }
+
+  const btn = document.getElementById('out-submit');
+  btn.disabled=true; btn.textContent='⏳ กำลังบันทึก...';
+
+  try{
+    // Handle FIFO across multiple lots if qty > first lot
+    let remaining = qtyV;
+    const toDispatch = [];
+    for(const l of lots){
+      if(remaining<=0) break;
+      const avail = l.qi - l.qo;
+      const take = Math.min(avail, remaining);
+      toDispatch.push({lot:l, take});
+      remaining -= take;
+    }
+
+    for(const {lot:l, take} of toDispatch){
+      const tx = {
+        lot: l.lot, d: todayDMY(), pid: prod.id, pname: prod.name, cat: prod.cat,
+        t: 'sale', mfg: l.mfg, exp: l.exp, ref, cust: prod.cust||'',
+        recorder: 'QR Scan', qi: 0, qo: take, note
+      };
+      await fetch(`${API}/tx`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(tx)});
+      allTxs.push({...tx, id: Date.now()});
+    }
+
+    showToast(`✅ เบิกออก ${qtyV} ${prod.unit} สำเร็จ`);
+    closeAll(); render();
+  } catch(e){
+    showToast('เกิดข้อผิดพลาด: '+e.message, 'err');
+  } finally { btn.disabled=false; btn.textContent='✅ บันทึกเบิกออก'; }
+}
+
+// ── Boot ────────────────────────────────────────────────
+async function boot(){
+  if(!pid){
+    document.getElementById('page').innerHTML=`<div class="err-box"><div class="icon">❌</div><div style="font-weight:700;margin-bottom:6px">ไม่พบรหัสสินค้า</div><div style="font-size:12px;color:#888">URL ต้องมี ?id=PRODUCT_ID</div></div>`;
+    return;
+  }
+  try{
+    const [pRes, tRes] = await Promise.all([fetch(`${API}/products`), fetch(`${API}/tx`)]);
+    const prods = await pRes.json();
+    allTxs = await tRes.json();
+    prod = prods.find(p=>p.id===pid);
+    if(!prod){
+      document.getElementById('page').innerHTML=`<div class="err-box"><div class="icon">🔍</div><div style="font-weight:700;margin-bottom:6px">ไม่พบสินค้า "${E(pid)}"</div><div style="font-size:12px;color:#888">รหัสสินค้าอาจไม่ถูกต้อง หรือถูกลบออกจากระบบแล้ว</div></div>`;
+      return;
+    }
+    document.title = `${prod.name} — Naive Innova`;
+    render();
+  } catch(e){
+    document.getElementById('page').innerHTML=`<div class="err-box"><div class="icon">⚠️</div><div style="font-weight:700;margin-bottom:6px">ไม่สามารถโหลดข้อมูลได้</div><div style="font-size:12px;color:#888">${E(e.message)}</div></div>`;
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
